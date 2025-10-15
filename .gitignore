@@ -1,0 +1,20 @@
+# R files
+.Rhistory
+.RData
+.Rproj.user
+.Renviron
+
+# Secrets
+config.yml
+*.pem
+*.key
+
+# Mac
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
