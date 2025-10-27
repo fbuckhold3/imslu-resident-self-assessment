@@ -126,17 +126,22 @@ server <- function(input, output, session) {
   # MODULE PLACEHOLDERS - Ready for gmed modules
   # ============================================================================
   
-  # Plus/Delta Module (ready to integrate)
-  # observe({
-  #   req(values$authenticated, values$app_data)
-  #   
-  #   # When ready, uncomment and use:
-  #   # mod_plus_delta_table_server(
-  #   #   "plus_delta_module",
-  #   #   rdm_data = reactive(values$app_data$assessment),
-  #   #   record_id = reactive(values$current_resident)
-  #   # )
-  # })
+ # ============================================================================
+# PLUS/DELTA MODULE INTEGRATION
+# ============================================================================
+
+# Plus/Delta Module using gmed
+mod_plus_delta_table_server(
+  "resident_plus_delta",
+  rdm_data = reactive({
+    req(values$app_data, values$current_resident)
+    
+    # Get assessment data for current resident
+    values$app_data$all_forms$assessment %>%
+      filter(record_id == values$current_resident)
+  }),
+  record_id = reactive(values$current_resident)
+)
   
   # Progress Module (placeholder)
   # observe({

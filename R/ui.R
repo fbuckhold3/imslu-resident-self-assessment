@@ -255,28 +255,19 @@ ui <- fluidPage(
       id = "main_tabs",
       
       # TAB 1: Plus/Delta Feedback
-      tabPanel(
-        "Plus / Delta",
-        value = "plus_delta",
-        icon = icon("comments"),
-        
-        div(
-          class = "tab-content",
-          h3("Plus / Delta Feedback", class = "mb-4"),
-          
-          # Placeholder for gmed module
-          div(
-            id = "plus_delta_module_container",
-            div(
-              class = "placeholder-content",
-              icon("comments", class = "fa-solid"),
-              h4("Plus / Delta Module"),
-              p("This will use: gmed::mod_plus_delta_table_ui()"),
-              p(class = "text-muted", "Displays faculty feedback on your performance")
-            )
-          )
-        )
-      ),
+tabPanel(
+  "Plus / Delta",
+  value = "plus_delta",
+  icon = icon("comments"),
+  
+  div(
+    class = "tab-content",
+    h3("Plus / Delta Feedback", class = "mb-4"),
+    
+    # Actual gmed module
+    gmed::mod_plus_delta_table_ui("resident_plus_delta")
+  )
+),
       
       # TAB 2: My Progress (Charts)
       tabPanel(
