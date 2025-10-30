@@ -1,16 +1,11 @@
 # ============================================================================
 # SHINY BROWSER CONFIGURATION
 # ============================================================================
-
-# Force Shiny to open in external browser
 options(shiny.launch.browser = TRUE)
 
 # ============================================================================
-# GLOBAL CONFIGURATION AND DATA LOADING
-# Using gmed package functions
-# ============================================================================
-
 # Load required packages
+# ============================================================================
 library(shiny)
 library(shinyjs)
 library(bslib)
@@ -24,9 +19,8 @@ library(ggplot2)
 library(gmed)
 
 # ============================================================================
-# CONFIGURATION
+# CONFIGURATION - Define BEFORE sourcing modules
 # ============================================================================
-
 app_config <- list(
   rdm_token = Sys.getenv("RDM_TOKEN"),
   fac_token = Sys.getenv("FAC_TOKEN", unset = NA),
@@ -40,29 +34,26 @@ if (app_config$rdm_token == "") {
 }
 
 # ============================================================================
-# DATA LOADING - Using gmed::load_rdm_complete
+# MODULE FILES - Source AFTER config is defined
 # ============================================================================
+source("R/scholarship_entry.R")
 
+# ============================================================================
+# DATA LOADING
+# ============================================================================
 app_data_store <- NULL
 
-#' Load Application Data
-#' 
-#' Loads RDM 2.0 data using gmed package, caches for session
-#' 
-#' @return List with all RDM data structures
 load_app_data <- function() {
   if (is.null(app_data_store)) {
     message("=== Loading RDM 2.0 Data ===")
     
     tryCatch({
-      # Use gmed's streamlined loader
       complete_data <- gmed::load_rdm_complete(
         rdm_token = app_config$rdm_token,
         redcap_url = app_config$redcap_url,
         verbose = app_config$debug_mode
       )
       
-      # Verify critical components
       if (is.null(complete_data$residents)) {
         stop("Failed to load residents data")
       }
@@ -84,11 +75,9 @@ load_app_data <- function() {
   }
 }
 
-
 # ============================================================================
-# STARTUP MESSAGE
+# STARTUP MESSAGE - Print LAST
 # ============================================================================
-
 message("=== RDM 2.0 Self-Assessment App ===")
 message("Debug mode: ", app_config$debug_mode)
 message("Ready to load data on first access")

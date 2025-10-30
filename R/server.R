@@ -312,6 +312,66 @@ observeEvent(input$nav_intro_next, {
   # MODULE PLACEHOLDERS - Ready for gmed modules
   # ============================================================================
   
+# ============================================================================
+  # SCHOLARSHIP
+  # ============================================================================
+# Reactive value to track scholarship data
+scholarship_rv <- shiny::reactiveVal(data.frame())
+
+# Function to refresh scholarship data
+refresh_scholarship <- function() {
+  req(values$current_resident)
+  data <- gmed::fetch_scholarship_data(
+    record_id = values$current_resident,
+    redcap_url = app_config$redcap_url,
+    redcap_token = app_config$rdm_token
+  )
+  scholarship_rv(data)
+}
+
+# Initial load
+shiny::observe({
+  shiny::req(values$current_resident)
+  refresh_scholarship()
+})
+
+# Display scholarship
+output$scholarship_display <- shiny::renderUI({
+  # Don't require scholarship_rv - it might be empty initially
+  
+  # Get data dictionary from app_data
+  data_dict <- if (!is.null(values$app_data) && !is.null(values$app_data$data_dict)) {
+    values$app_data$data_dict
+  } else {
+    NULL
+  }
+  
+  # Get scholarship data (might be empty data frame)
+  schol_data <- scholarship_rv()
+  
+  # Display even if empty
+  scholarship_summary <- gmed::display_scholarship(
+    schol_data, 
+    data_dict = data_dict
+  )
+  
+  shiny::tagList(
+    gmed::scholarship_badge_ui(scholarship_summary$badges),
+    shiny::hr(),
+    gmed::scholarship_tables_ui(scholarship_summary)
+  )
+})
+
+# Entry module - pass data_dict as VALUE not reactive
+scholarship_entry_server(
+  "scholarship_entry",
+  record_id = reactive(values$current_resident),
+  redcap_url = app_config$redcap_url,
+  redcap_token = app_config$rdm_token,
+  data_dict = if (!is.null(values$app_data)) values$app_data$data_dict else NULL,
+  refresh_callback = refresh_scholarship
+)
+
  # ============================================================================
 # PLUS/DELTA MODULE INTEGRATION
 # ============================================================================

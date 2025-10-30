@@ -194,59 +194,48 @@ ui <- page_navbar(
   
   # Scholarly Activities Page
   nav_panel(
-    title = NULL,
-    value = "scholarly",
+  title = NULL,
+  value = "scholarly",
+  div(
+    class = "container py-4",
     div(
-      class = "container py-4",
+      class = "row",
       div(
-        class = "row",
+        class = "col-lg-10 offset-lg-1",
+        h2("Scholarly Activities"),
+        p(class = "lead text-muted", "Review and update your scholarly work"),
+        hr(),
+        
+        # Current activities
+        h4("Current Activities"),
+        
+        # Display section
+        uiOutput("scholarship_display"),
+        hr(),
+        
+        # Entry section
+        scholarship_entry_ui("scholarship_entry"),
+        
+        # Navigation
         div(
-          class = "col-lg-10 offset-lg-1",
-          
-          h2("Scholarly Activities"),
-          p(class = "lead text-muted", "Review and update your scholarly work"),
-          hr(),
-          
-          # Current activities
-          h4("Current Activities"),
-          DT::dataTableOutput("scholarly_activities_table"),
-          
-          div(
-            class = "mt-4",
-            actionButton(
-              "add_scholarly_activity",
-              "Add New Activity",
-              class = "btn-success",
-              icon = icon("plus")
-            )
+          class = "d-flex justify-content-between mt-4 pt-3 border-top",
+          actionButton(
+            "nav_scholarly_prev",
+            "Previous",
+            class = "btn-outline-secondary",
+            icon = icon("arrow-left")
           ),
-          
-          # Save status
-          div(
-            class = "mt-2",
-            uiOutput("scholarly_save_status")
-          ),
-          
-          # Navigation
-          div(
-            class = "d-flex justify-content-between mt-4 pt-3 border-top",
-            actionButton(
-              "nav_scholarly_prev",
-              "Previous",
-              class = "btn-outline-secondary",
-              icon = icon("arrow-left")
-            ),
-            actionButton(
-              "nav_scholarly_next",
-              "Continue to Well-being",
-              class = "btn-primary",
-              icon = icon("arrow-right")
-            )
+          actionButton(
+            "nav_scholarly_next",
+            "Continue to Well-being",
+            class = "btn-primary",
+            icon = icon("arrow-right")
           )
         )
       )
     )
-  ),
+  )
+),
   
   # Well-being Page
   nav_panel(
