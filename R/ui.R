@@ -159,7 +159,23 @@ ui <- page_navbar(
                       )
                     )
                   )
-                )
+                ),
+                # Period detection display (for testing)
+          conditionalPanel(
+            condition = "input.show_period_debug",
+            div(
+              class = "card mb-4 border-info",
+              div(
+                class = "card-header bg-info text-white",
+                h5(class = "mb-0", icon("cog"), " Period Detection (Debug)")
+              ),
+              div(
+                class = "card-body",
+                verbatimTextOutput("period_debug_info")
+              )
+            )
+          ),
+          checkboxInput("show_period_debug", "Show Period Debug Info", value = TRUE),
               )
             )
           ),
@@ -501,6 +517,36 @@ ui <- page_navbar(
               )
             )
           )
+        )
+      )
+    )
+  ),
+  # ============================================================================
+  # TEST WRAPPER PAGE (FOR DEVELOPMENT)
+  # ============================================================================
+  nav_panel(
+    title = "Test Wrapper",
+    value = "test_wrapper",
+    div(
+      class = "container py-4",
+      div(
+        class = "row",
+        div(
+          class = "col-lg-10 offset-lg-1",
+          
+          div(
+            class = "alert alert-warning",
+            icon("flask", class = "me-2"),
+            strong("Development Mode:"),
+            " This page tests the new modular wrapper system."
+          ),
+          
+          h2("Testing Scholarship Wrapper"),
+          p(class = "lead text-muted", "This should show both display and entry"),
+          hr(),
+          
+          # Test the wrapper module
+          mod_scholarship_wrapper_ui("test_scholarship_wrapper")
         )
       )
     )

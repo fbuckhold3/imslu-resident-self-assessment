@@ -389,6 +389,21 @@ mod_plus_delta_table_server(
   record_id = reactive(values$current_resident)
 )
   
+  # Test scholarship wrapper module
+# Test scholarship wrapper module
+observe({
+  req(values$authenticated, values$app_data, values$current_resident)
+  
+  # Test calling the wrapper
+  mod_scholarship_wrapper_server(
+    "test_scholarship_wrapper",
+    rdm_data = reactive(values$app_data),
+    record_id = reactive(values$current_resident),
+    period = NULL,
+    data_dict = reactive(values$app_data$data_dict)
+  )
+})
+  
   # Progress Module (placeholder)
   # observe({
   #   req(values$authenticated, values$app_data)
@@ -412,4 +427,107 @@ mod_plus_delta_table_server(
   #   req(values$authenticated, values$app_data)
   #   # Milestone self-assessment entry will go here
   # })
+
+
+  # ============================================================================
+# PERIOD DETECTION TEST (SAFE - DOESN'T CHANGE EXISTING FUNCTIONALITY)
+# ============================================================================
+
+observe({
+  req(values$current_resident, values$app_data$residents)
+  
+  resident_info <- values$app_data$residents %>%
+    filter(record_id == values$current_resident) %>%
+    slice(1)
+  
+  if (nrow(resident_info) == 0) return(NULL)
+  
+  # Test period detection
+  detected_period <- tryCatch({
+  gmed::calculate_pgy_and_period(
+    grad_yr = resident_info$grad_yr,  # CHANGED from graduation_year
+    type = resident_info$residency_type %||% "Categorical",
+    current_date = Sys.Date()
+  )
+}, error = function(e) {
+  message("Period detection error: ", e$message)
+  NULL
+})
+  
+  if (!is.null(detected_period)) {
+    message("=== PERIOD DETECTION TEST ===")
+    message("Resident: ", values$current_resident)
+    message("Period Number: ", detected_period$period_number)
+    message("Period Name: ", detected_period$period_name)
+    message("PGY Year: ", detected_period$pgy_year)
+    message("Is Valid: ", detected_period$is_valid)
+    
+    # Get period structure
+    if (detected_period$period_number %in% 1:7) {
+      config <- get_period_structure(detected_period$period_number)
+      message("Modules for this period: ", paste(config$modules, collapse = ", "))
+    }
+  }
+})
+  
+# Period debug output
+# Period debug output
+output$period_debug_info <- renderPrint({
+  req(values$current_resident, values$app_data$residents, values$app_data$data_dict)
+  
+  resident_info <- values$app_data$residents %>%
+    filter(record_id == values$current_resident) %>%
+    slice(1)
+  
+  if (nrow(resident_info) == 0) return("No resident found")
+  
+  data_dict <- values$app_data$data_dict
+  
+  # Use gmed's parse_redcap_choices to get grad_yr mapping
+  grad_yr_field <- data_dict %>%
+    filter(field_name == "grad_yr") %>%
+    slice(1)
+  
+  grad_yr_choices <- gmed::parse_redcap_choices(
+    grad_yr_field$select_choices_or_calculations[1]
+  )
+  
+  # Get actual year from coded value
+  grad_yr_actual <- as.numeric(grad_yr_choices[as.character(resident_info$grad_yr)])
+  
+  # Use gmed's existing translate_resident_type
+  res_type_label <- gmed::translate_resident_type(resident_info$type, data_dict)
+  
+  detected_period <- tryCatch({
+    gmed::calculate_pgy_and_period(
+      grad_yr = grad_yr_actual,
+      type = resident_info$type,
+      current_date = Sys.Date()
+    )
+  }, error = function(e) {
+    return(paste("Error:", e$message))
+  })
+  
+  if (!is.null(detected_period) && !is.na(detected_period$period_number) && 
+      detected_period$period_number %in% 1:7) {
+    config <- get_period_structure(detected_period$period_number)
+    
+    list(
+      resident_type_coded = resident_info$type,
+      resident_type_label = res_type_label,
+      grad_yr_coded = resident_info$grad_yr,
+      grad_yr_actual = grad_yr_actual,
+      period_info = detected_period,
+      modules = config$modules
+    )
+  } else {
+    list(
+      error = "Period detection issue",
+      resident_type = resident_info$type,
+      grad_yr_coded = resident_info$grad_yr,
+      grad_yr_actual = grad_yr_actual,
+      period_result = detected_period
+    )
+  }
+})
 }

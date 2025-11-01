@@ -162,17 +162,15 @@ get_period_structure <- function(period_number) {
 #' Calculates which period a resident should be in based on their
 #' PGY year, residency type, and current date
 #'
-#' @param grad_year Numeric. Graduation year
-#' @param residency_type Character. "Categorical" or "Preliminary"
-#' @param current_date Date. Defaults to Sys.Date()
-#' @return List with period_number and period_name
+#' Determine Current Period from Resident Data
+#'
 #' @export
 determine_resident_period <- function(grad_year, residency_type = "Categorical", 
                                      current_date = Sys.Date()) {
   
   # Use existing period calculation function
-  period_calc <- calculate_pgy_and_period(
-    grad_yr = grad_year,
+  period_calc <- gmed::calculate_pgy_and_period(
+    grad_yr = grad_year,  # Note: function expects grad_yr
     type = residency_type,
     current_date = current_date
   )

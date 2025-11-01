@@ -37,6 +37,13 @@ if (app_config$rdm_token == "") {
 # MODULE FILES - Source AFTER config is defined
 # ============================================================================
 source("R/scholarship_entry.R")
+# Source new config files
+source("R/config/period_config.R")
+source("R/config/module_registry.R")
+source("R/config/field_mappings.R")
+
+# Source wrapper modules (once created)
+source("R/modules/wrappers/mod_scholarship_wrapper.R")
 
 # ============================================================================
 # DATA LOADING
