@@ -1,5 +1,5 @@
 # ============================================================================
-# USER INTERFACE
+# USER INTERFACE - DYNAMIC PERIOD-BASED FLOW
 # RDM 2.0 Resident Self-Assessment
 # ============================================================================
 
@@ -8,10 +8,6 @@ ui <- page_navbar(
   id = "main_nav",
   theme = bs_theme(version = 5, bootswatch = "cosmo"),
   fillable = FALSE,
-  
-  # ============================================================================
-  # HIDDEN NAVIGATION - CONTROLLED BY SERVER
-  # ============================================================================
   
   # Access Code Page
   nav_panel(
@@ -53,7 +49,7 @@ ui <- page_navbar(
     )
   ),
   
-  # Introduction Page
+  # Introduction Page (always shown)
   nav_panel(
     title = NULL,
     value = "intro",
@@ -64,7 +60,7 @@ ui <- page_navbar(
         div(
           class = "col-lg-10 offset-lg-1",
           
-          # Welcome header with comprehensive info
+          # Welcome header
           div(
             class = "card mb-4 shadow-sm",
             div(
@@ -76,11 +72,9 @@ ui <- page_navbar(
               p(class = "lead text-muted mb-4", "Welcome to your portfolio review"),
               hr(),
               
-              # Resident info grid - 3 columns
+              # Resident info grid
               div(
                 class = "row g-3",
-                
-                # Column 1: Training info
                 div(
                   class = "col-md-4",
                   div(
@@ -112,8 +106,6 @@ ui <- page_navbar(
                     )
                   )
                 ),
-                
-                # Column 2: Current evaluation period
                 div(
                   class = "col-md-4",
                   div(
@@ -137,8 +129,6 @@ ui <- page_navbar(
                     )
                   )
                 ),
-                
-                # Column 3: Coach information
                 div(
                   class = "col-md-4",
                   div(
@@ -159,8 +149,12 @@ ui <- page_navbar(
                       )
                     )
                   )
-                ),
-                # Period detection display (for testing)
+                )
+              )
+            )
+          ),
+          
+          # Period debug (for testing)
           conditionalPanel(
             condition = "input.show_period_debug",
             div(
@@ -173,32 +167,47 @@ ui <- page_navbar(
                 class = "card-body",
                 verbatimTextOutput("period_debug_info")
               )
-            )
-          ),
-          checkboxInput("show_period_debug", "Show Period Debug Info", value = TRUE),
+            ),
+            div(
+              class = "card mb-4 border-warning",
+              div(
+                class = "card-header bg-warning",
+                h5(class = "mb-0", icon("wrench"), " Period Override (Testing)")
+              ),
+              div(
+                class = "card-body",
+                p(class = "text-muted small", "Override automatic period detection for testing different period flows"),
+                selectInput(
+                  "period_override",
+                  "Force Period:",
+                  choices = c(
+                    "Use Auto-Detection" = "auto",
+                    "Period 7: Entering Residency (July-Sept, Intern)" = "7",
+                    "Period 1: Mid Intern (Oct-Jan, PGY1)" = "1",
+                    "Period 2: End Intern (Feb-June, PGY1)" = "2",
+                    "Period 3: Mid PGY2 (Oct-Jan, PGY2)" = "3",
+                    "Period 4: End PGY2 (Feb-June, PGY2)" = "4",
+                    "Period 5: Mid PGY3 (Oct-Jan, PGY3)" = "5",
+                    "Period 6: Graduating (Feb-June, PGY3)" = "6"
+                  ),
+                  selected = "auto"
+                ),
+                div(
+                  class = "alert alert-info small mb-0",
+                  icon("info-circle", class = "me-2"),
+                  "When override is active, the flow will show modules for the selected period."
+                )
               )
             )
           ),
-          
-          # Career goals section - using module
-          div(
-            class = "card mb-4 shadow-sm",
-            div(
-              class = "card-header bg-white border-bottom",
-              h4(class = "mb-0", icon("bullseye", class = "me-2"), "Career Goals & Planning")
-            ),
-            div(
-              class = "card-body",
-              mod_career_goals_ui("career_goals", mode = "edit")
-            )
-          ),
+          checkboxInput("show_period_debug", "Show Period Debug Info", value = TRUE),
           
           # Navigation
           div(
             class = "d-flex justify-content-end mt-4",
             actionButton(
               "nav_intro_next",
-              "Continue to Scholarly Activities",
+              "Begin Portfolio Review",
               class = "btn-primary btn-lg",
               icon = icon("arrow-right")
             )
@@ -208,282 +217,11 @@ ui <- page_navbar(
     )
   ),
   
-  # Scholarly Activities Page
-  nav_panel(
-  title = NULL,
-  value = "scholarly",
-  div(
-    class = "container py-4",
-    div(
-      class = "row",
-      div(
-        class = "col-lg-10 offset-lg-1",
-        h2("Scholarly Activities"),
-        p(class = "lead text-muted", "Review and update your scholarly work"),
-        hr(),
-        
-        # Current activities
-        h4("Current Activities"),
-        
-        # Display section
-        uiOutput("scholarship_display"),
-        hr(),
-        
-        # Entry section
-        scholarship_entry_ui("scholarship_entry"),
-        
-        # Navigation
-        div(
-          class = "d-flex justify-content-between mt-4 pt-3 border-top",
-          actionButton(
-            "nav_scholarly_prev",
-            "Previous",
-            class = "btn-outline-secondary",
-            icon = icon("arrow-left")
-          ),
-          actionButton(
-            "nav_scholarly_next",
-            "Continue to Well-being",
-            class = "btn-primary",
-            icon = icon("arrow-right")
-          )
-        )
-      )
-    )
-  )
-),
-  
-  # Well-being Page
+    # SINGLE DYNAMIC CONTENT PAGE
   nav_panel(
     title = NULL,
-    value = "wellbeing",
-    div(
-      class = "container py-4",
-      div(
-        class = "row",
-        div(
-          class = "col-lg-10 offset-lg-1",
-          h2("Well-being Check"),
-          p(class = "lead text-muted", "How are you doing?"),
-          hr(),
-          
-          # Well-being content placeholder
-          div(
-            class = "card",
-            div(
-              class = "card-body",
-              p("Well-being assessment content will go here")
-            )
-          ),
-          
-          # Navigation
-          div(
-            class = "d-flex justify-content-between mt-4 pt-3 border-top",
-            actionButton(
-              "nav_wellbeing_prev",
-              "Previous",
-              class = "btn-outline-secondary",
-              icon = icon("arrow-left")
-            ),
-            actionButton(
-              "nav_wellbeing_next",
-              "Continue to Evaluations",
-              class = "btn-primary",
-              icon = icon("arrow-right")
-            )
-          )
-        )
-      )
-    )
-  ),
-  
-  # Plus/Delta Review Page
-  nav_panel(
-    title = NULL,
-    value = "plusdelta",
-    div(
-      class = "container py-4",
-      div(
-        class = "row",
-        div(
-          class = "col-lg-10 offset-lg-1",
-          h2("Evaluation Feedback Review"),
-          p(class = "lead text-muted", "Review your plus/delta feedback and reflect"),
-          hr(),
-          
-          # Plus/Delta module
-          mod_plus_delta_table_ui("plusdelta_review"),
-          
-          # Reflection input
-          div(
-            class = "card mt-4",
-            div(
-              class = "card-header bg-info text-white",
-              h4(class = "mb-0", icon("lightbulb"), " Your Reflection")
-            ),
-            div(
-              class = "card-body",
-              textAreaInput(
-                "plusdelta_reflection",
-                "After reviewing this feedback, what are your thoughts?",
-                rows = 6,
-                width = "100%",
-                placeholder = "Reflect on the feedback you've received..."
-              )
-            )
-          ),
-          
-          # Navigation
-          div(
-            class = "d-flex justify-content-between mt-4 pt-3 border-top",
-            actionButton(
-              "nav_plusdelta_prev",
-              "Previous",
-              class = "btn-outline-secondary",
-              icon = icon("arrow-left")
-            ),
-            actionButton(
-              "nav_plusdelta_next",
-              "Continue to Learning Data",
-              class = "btn-primary",
-              icon = icon("arrow-right")
-            )
-          )
-        )
-      )
-    )
-  ),
-  
-  # Learning Data Page
-  nav_panel(
-    title = NULL,
-    value = "learning",
-    div(
-      class = "container py-4",
-      div(
-        class = "row",
-        div(
-          class = "col-lg-10 offset-lg-1",
-          h2("Learning Data"),
-          p(class = "lead text-muted", "Review your learning metrics"),
-          hr(),
-          
-          # Learning data placeholder
-          div(
-            class = "card",
-            div(
-              class = "card-body",
-              p("Learning data visualization will go here")
-            )
-          ),
-          
-          # Navigation
-          div(
-            class = "d-flex justify-content-between mt-4 pt-3 border-top",
-            actionButton(
-              "nav_learning_prev",
-              "Previous",
-              class = "btn-outline-secondary",
-              icon = icon("arrow-left")
-            ),
-            actionButton(
-              "nav_learning_next",
-              "Continue to Milestones",
-              class = "btn-primary",
-              icon = icon("arrow-right")
-            )
-          )
-        )
-      )
-    )
-  ),
-  
-  # Milestones Page
-  nav_panel(
-    title = NULL,
-    value = "milestones",
-    div(
-      class = "container py-4",
-      div(
-        class = "row",
-        div(
-          class = "col-lg-10 offset-lg-1",
-          h2("Milestone Self-Assessment"),
-          p(class = "lead text-muted", "Review and update your milestone progress"),
-          hr(),
-          
-          # Milestone module placeholder
-          div(
-            class = "card",
-            div(
-              class = "card-body",
-              p("Milestone assessment module will go here")
-            )
-          ),
-          
-          # Navigation
-          div(
-            class = "d-flex justify-content-between mt-4 pt-3 border-top",
-            actionButton(
-              "nav_milestones_prev",
-              "Previous",
-              class = "btn-outline-secondary",
-              icon = icon("arrow-left")
-            ),
-            actionButton(
-              "nav_milestones_next",
-              "Continue to ILP",
-              class = "btn-primary",
-              icon = icon("arrow-right")
-            )
-          )
-        )
-      )
-    )
-  ),
-  
-  # ILP Page
-  nav_panel(
-    title = NULL,
-    value = "ilp",
-    div(
-      class = "container py-4",
-      div(
-        class = "row",
-        div(
-          class = "col-lg-10 offset-lg-1",
-          h2("Individualized Learning Plan"),
-          p(class = "lead text-muted", "Document your learning goals"),
-          hr(),
-          
-          # ILP content placeholder
-          div(
-            class = "card",
-            div(
-              class = "card-body",
-              p("ILP module will go here")
-            )
-          ),
-          
-          # Navigation
-          div(
-            class = "d-flex justify-content-between mt-4 pt-3 border-top",
-            actionButton(
-              "nav_ilp_prev",
-              "Previous",
-              class = "btn-outline-secondary",
-              icon = icon("arrow-left")
-            ),
-            actionButton(
-              "nav_ilp_next",
-              "Review & Submit",
-              class = "btn-primary",
-              icon = icon("arrow-right")
-            )
-          )
-        )
-      )
-    )
+    value = "portfolio",
+    uiOutput("portfolio_content")  # Server renders everything
   ),
   
   # Completion Page
@@ -521,38 +259,8 @@ ui <- page_navbar(
       )
     )
   ),
-  # ============================================================================
-  # TEST WRAPPER PAGE (FOR DEVELOPMENT)
-  # ============================================================================
-  nav_panel(
-    title = "Test Wrapper",
-    value = "test_wrapper",
-    div(
-      class = "container py-4",
-      div(
-        class = "row",
-        div(
-          class = "col-lg-10 offset-lg-1",
-          
-          div(
-            class = "alert alert-warning",
-            icon("flask", class = "me-2"),
-            strong("Development Mode:"),
-            " This page tests the new modular wrapper system."
-          ),
-          
-          h2("Testing Scholarship Wrapper"),
-          p(class = "lead text-muted", "This should show both display and entry"),
-          hr(),
-          
-          # Test the wrapper module
-          mod_scholarship_wrapper_ui("test_scholarship_wrapper")
-        )
-      )
-    )
-  ),
   
-  # Progress indicator (top right)
+  # Progress indicator
   nav_spacer(),
   nav_item(
     uiOutput("progress_indicator")

@@ -15,426 +15,469 @@ server <- function(input, output, session) {
     resident_info = NULL,
     app_data = NULL
   )
-
-  # ============================================================================
-  # NAVIGATION CONTROL
-  # ============================================================================
-  
-  # Define workflow
-  workflow <- c("access", "intro", "scholarly", "wellbeing", 
-                "plusdelta", "learning", "milestones", "ilp", "complete")
-  
-  current_step <- reactiveVal(1)
-  
-  # Progress indicator
-  output$progress_indicator <- renderUI({
-    req(current_step())
-    
-    if (current_step() == 1) return(NULL)  # Don't show on access page
-    
-    total_steps <- length(workflow) - 1  # Exclude access page from count
-    current <- current_step() - 1  # Adjust for access page
-    
-    div(
-      style = "min-width: 200px; padding: 8px;",
-      tags$small(
-        class = "text-muted me-2",
-        sprintf("Step %d of %d", current, total_steps)
-      ),
-      tags$div(
-        class = "progress",
-        style = "height: 8px;",
-        tags$div(
-          class = "progress-bar bg-primary",
-          role = "progressbar",
-          style = paste0("width: ", round((current / total_steps) * 100), "%;")
-        )
-      )
-    )
-  })
-  
-  # Navigation functions
-  go_to_step <- function(step_number) {
-    if (step_number >= 1 && step_number <= length(workflow)) {
-      current_step(step_number)
-      updateNavbarPage(session, "main_nav", selected = workflow[step_number])
-    }
-  }
-  
-  # Navigation button observers
-  observeEvent(input$nav_intro_next, { go_to_step(3) })
-  
-  observeEvent(input$nav_scholarly_prev, { go_to_step(2) })
-  observeEvent(input$nav_scholarly_next, { go_to_step(4) })
-  
-  observeEvent(input$nav_wellbeing_prev, { go_to_step(3) })
-  observeEvent(input$nav_wellbeing_next, { go_to_step(5) })
-  
-  observeEvent(input$nav_plusdelta_prev, { go_to_step(4) })
-  observeEvent(input$nav_plusdelta_next, { go_to_step(6) })
-  
-  observeEvent(input$nav_learning_prev, { go_to_step(5) })
-  observeEvent(input$nav_learning_next, { go_to_step(7) })
-  
-  observeEvent(input$nav_milestones_prev, { go_to_step(6) })
-  observeEvent(input$nav_milestones_next, { go_to_step(8) })
-  
-  observeEvent(input$nav_ilp_prev, { go_to_step(7) })
-  observeEvent(input$nav_ilp_next, { go_to_step(9) })
-  
-  observeEvent(input$return_to_start, { 
-    # Reset authentication and go back to start
-    values$authenticated <- FALSE
-    values$current_resident <- NULL
-    values$resident_info <- NULL
-    go_to_step(1)
-  })
-
-    # ============================================================================
-  # PERIOD AND RESIDENT INFO CALCULATION
-  # ============================================================================
-  
-# Calculate current period info for resident
-  resident_period_info <- reactive({
-    req(values$resident_info, values$app_data)
-    
-    # Debug what we're getting
-    if (app_config$debug_mode) {
-      message("=== CALCULATING PERIOD INFO ===")
-      message("Raw grad_yr: '", values$resident_info$grad_yr, "'")
-      message("  Class: ", class(values$resident_info$grad_yr))
-      message("Raw type: '", values$resident_info$type, "'")
-      message("  Class: ", class(values$resident_info$type))
-    }
-    
-    # Convert grad_yr
-    grad_yr_clean <- suppressWarnings(as.numeric(values$resident_info$grad_yr))
-    
-    # Convert type - handle both numeric codes and text labels
-    type_value <- values$resident_info$type
-    if (is.character(type_value)) {
-      # Convert text to numeric code
-      type_clean <- switch(tolower(trimws(type_value)),
-                          "preliminary" = 1,
-                          "categorical" = 2,
-                          "prelim" = 1,
-                          "cat" = 2,
-                          suppressWarnings(as.numeric(type_value)))
-    } else {
-      type_clean <- suppressWarnings(as.numeric(type_value))
-    }
-    
-    if (app_config$debug_mode) {
-      message("After conversion:")
-      message("  grad_yr_clean: ", grad_yr_clean)
-      message("  type_clean: ", type_clean)
-    }
-    
-    # Check if conversion worked
-    if (is.na(grad_yr_clean) || is.na(type_clean)) {
-      warning("Invalid grad_yr or type - returning default period info")
-      return(list(
-        pgy_year = "Unknown",
-        period_number = NA,
-        period_name = "Unknown Period",
-        academic_year = "Unknown",
-        is_valid = FALSE
-      ))
-    }
-    
-    # Pass data dictionary so labels come from REDCap
-    gmed::calculate_pgy_and_period(
-      grad_yr = grad_yr_clean,
-      type = type_clean,
-      data_dict = values$app_data$data_dict
-    )
-  })
   
 # ============================================================================
-  # AUTHENTICATION - Using gmed universal function
-  # ============================================================================
+# AUTHENTICATION - Using gmed universal function
+# ============================================================================
+
+observeEvent(input$submit_code, {
+  req(input$access_code_input)
   
-  observeEvent(input$submit_code, {
-    req(input$access_code_input)
+  # Load app data first
+  if (is.null(values$app_data)) {
+    values$app_data <- load_app_data()
+  }
+  
+  # Authenticate using gmed function
+  auth_result <- gmed::authenticate_resident(
+    access_code = input$access_code_input,
+    residents_df = values$app_data$residents,
+    allow_record_id = TRUE,
+    debug = app_config$debug_mode
+  )
+  
+  if (auth_result$success) {
+    # Success!
+    values$authenticated <- TRUE
+    values$resident_info <- auth_result$resident_info
+    values$current_resident <- auth_result$resident_info$record_id
     
-    # Load app data first
-    if (is.null(values$app_data)) {
-      values$app_data <- load_app_data()
-    }
+    # Navigate to intro page
+    updateNavbarPage(session, "main_nav", selected = "intro")
     
-    # Authenticate using gmed function
-    auth_result <- gmed::authenticate_resident(
-      access_code = input$access_code_input,
-      residents_df = values$app_data$residents,
-      allow_record_id = TRUE,
-      debug = app_config$debug_mode
+    showNotification(auth_result$message, type = "message")
+    
+  } else {
+    # Failed
+    shinyjs::show("access_code_error")
+    updateTextInput(session, "access_code_input", value = "")
+    showNotification(auth_result$message, type = "warning")
+  }
+})
+
+  # ============================================================================
+# ACTIVE PERIOD WITH OVERRIDE
+# ============================================================================
+
+active_period <- reactive({
+  req(values$current_resident, values$app_data$residents, values$app_data$data_dict)
+  
+  # Check for manual override
+  if (!is.null(input$period_override) && input$period_override != "auto") {
+    override_num <- as.numeric(input$period_override)
+    config <- get_period_structure(override_num)
+    
+    return(list(
+      period_number = override_num,
+      period_name = config$period_name,
+      detection_method = "manual_override",
+      is_override = TRUE
+    ))
+  }
+
+  
+  
+  # Use automatic detection
+  resident_info <- values$app_data$residents %>%
+    filter(record_id == values$current_resident) %>%
+    slice(1)
+  
+  if (nrow(resident_info) == 0) return(NULL)
+  
+  data_dict <- values$app_data$data_dict
+
+  # Handle type field - convert label to code if needed
+type_value <- resident_info$type
+type_code <- if (is.character(type_value) && tolower(type_value) == "categorical") {
+  2
+} else if (is.character(type_value) && tolower(type_value) == "preliminary") {
+  1
+} else {
+  as.numeric(type_value)
+}
+  
+# Get grad_yr - check if it's already a year or needs translation
+grad_yr_value <- resident_info$grad_yr
+
+# Try to use it directly first
+grad_yr_actual <- suppressWarnings(as.numeric(grad_yr_value))
+
+# If it's not a valid year (< 2020 or > 2040), try translating from data dict
+if (is.na(grad_yr_actual) || grad_yr_actual < 2020 || grad_yr_actual > 2040) {
+  # Get grad_yr mapping from data dictionary
+  grad_yr_field <- data_dict %>%
+    filter(field_name == "grad_yr") %>%
+    slice(1)
+  
+  if (nrow(grad_yr_field) > 0) {
+    grad_yr_choices <- gmed::parse_redcap_choices(
+      grad_yr_field$select_choices_or_calculations[1]
     )
     
-    if (auth_result$success) {
-      # Success!
-      values$authenticated <- TRUE
-      values$resident_info <- auth_result$resident_info
-      values$current_resident <- auth_result$resident_info$record_id
-      
-      # Navigate to intro page
-      go_to_step(2)
-      
-      showNotification(auth_result$message, type = "message")
-      
-    } else {
-      # Failed
-      shinyjs::show("access_code_error")
-      updateTextInput(session, "access_code_input", value = "")
-      showNotification(auth_result$message, type = "warning")
-    }
-  })
+    # Translate coded value to actual year
+    grad_yr_actual <- as.numeric(grad_yr_choices[as.character(grad_yr_value)])
+  }
+}
+
+# NOW CALCULATE THE PERIOD
+detected_period <- tryCatch({
+  gmed::calculate_pgy_and_period(
+    grad_yr = grad_yr_actual,
+    type = type_code,  # Use converted code
+    current_date = Sys.Date()
+  )
+}, error = function(e) {
+  NULL
+})
+
+
+# RETURN THE PERIOD INFO (THIS WAS MISSING!)
+if (!is.null(detected_period) && detected_period$period_number %in% 1:7) {
+  return(list(
+    period_number = detected_period$period_number,
+    period_name = detected_period$period_name,
+    pgy_year = detected_period$pgy_year,
+    detection_method = "automatic",
+    is_override = FALSE
+  ))
+}
+})
+
+
+
   
   # ============================================================================
   # RESIDENT INFO DISPLAY
   # ============================================================================
-  
-   # ============================================================================
-  # INTRO PAGE OUTPUTS
-  # ============================================================================
-  
-  output$resident_name_display_intro <- renderText({
-    req(values$resident_info)
-    values$resident_info$name %||% "Resident"
-  })
-  
-  output$resident_level_display_intro <- renderText({
-    req(values$resident_info)
-    period_info <- resident_period_info()
-    
-    # Show both calculated level and period
-    level_text <- switch(as.character(period_info$pgy_year),
-                        "1" = "PGY-1 (Intern)",
-                        "2" = "PGY-2",
-                        "3" = "PGY-3",
-                        "Unknown")
-    
-    level_text
-  })
-  
-  output$resident_track_display_intro <- renderText({
-    req(values$resident_info)
-    
-    # Show type (Categorical vs Preliminary)
-    type_display <- if (!is.null(values$resident_info$type)) {
-      if (values$resident_info$type == 2 || tolower(values$resident_info$type) == "categorical") {
-        "Categorical"
-      } else if (values$resident_info$type == 1 || tolower(values$resident_info$type) == "preliminary") {
-        "Preliminary"
-      } else {
-        values$resident_info$type
-      }
-    } else {
-      "Unknown"
-    }
-    
-    type_display
-  })
-  
-  output$resident_period_display_intro <- renderText({
-    req(values$resident_info)
-    period_info <- resident_period_info()
-    
-    if (period_info$is_valid) {
-      paste0(period_info$period_name, " (Period ", period_info$period_number, ")")
-    } else {
-      "No active period"
-    }
-  })
-  
-  output$resident_academic_year_display_intro <- renderText({
-    req(values$resident_info)
-    period_info <- resident_period_info()
-    period_info$academic_year %||% "Unknown"
-  })
-  
-  output$resident_grad_year_display_intro <- renderText({
-    req(values$resident_info)
-    values$resident_info$grad_yr %||% "Unknown"
-  })
-
-  output$resident_coach_display_intro <- renderText({
-    req(values$resident_info)
-    values$resident_info$coach %||% "Not assigned"
-  })
-  
-  output$resident_coach_email_display_intro <- renderUI({
-    req(values$resident_info)
-    
-    email <- values$resident_info$coach_email
-    
-    if (!is.null(email) && nchar(trimws(email)) > 0) {
-      tags$a(
-        href = paste0("mailto:", email),
-        icon("envelope", class = "me-1"),
-        email,
-        class = "text-decoration-none"
-      )
-    } else {
-      tags$span(class = "text-muted", "No email on file")
-    }
-  })
-
-  # In your app R/server.R - now much simpler!
-
-# Call the module
-career_module <- mod_career_goals_server(
-  "career",
-  resident_info = reactive(values$resident_info),
-  app_data = reactive(values$app_data),
-  current_period = NULL,  # Auto-calculate
-  mode = "edit",
-  redcap_token = app_config$rdm_token
-)
-
-# Navigation with save
-observeEvent(input$nav_intro_next, {
-  # Save career data
-  if (career_module$has_changes()) {
-    result <- career_module$save()
-    if (result$success) {
-      showNotification("Career goals saved", type = "message")
-    } else {
-      showNotification(paste("Error:", result$error), type = "error")
-      return()  # Don't navigate if save failed
-    }
-  }
-  
-  go_to_step(3)
-})
-  
- 
-  # ============================================================================
-  # MODULE PLACEHOLDERS - Ready for gmed modules
-  # ============================================================================
-  
-# ============================================================================
-  # SCHOLARSHIP
-  # ============================================================================
-# Reactive value to track scholarship data
-scholarship_rv <- shiny::reactiveVal(data.frame())
-
-# Function to refresh scholarship data
-refresh_scholarship <- function() {
-  req(values$current_resident)
-  data <- gmed::fetch_scholarship_data(
-    record_id = values$current_resident,
-    redcap_url = app_config$redcap_url,
-    redcap_token = app_config$rdm_token
-  )
-  scholarship_rv(data)
-}
-
-# Initial load
-shiny::observe({
-  shiny::req(values$current_resident)
-  refresh_scholarship()
-})
-
-# Display scholarship
-output$scholarship_display <- shiny::renderUI({
-  # Don't require scholarship_rv - it might be empty initially
-  
-  # Get data dictionary from app_data
-  data_dict <- if (!is.null(values$app_data) && !is.null(values$app_data$data_dict)) {
-    values$app_data$data_dict
-  } else {
-    NULL
-  }
-  
-  # Get scholarship data (might be empty data frame)
-  schol_data <- scholarship_rv()
-  
-  # Display even if empty
-  scholarship_summary <- gmed::display_scholarship(
-    schol_data, 
-    data_dict = data_dict
-  )
-  
-  shiny::tagList(
-    gmed::scholarship_badge_ui(scholarship_summary$badges),
-    shiny::hr(),
-    gmed::scholarship_tables_ui(scholarship_summary)
-  )
-})
-
-# Entry module - pass data_dict as VALUE not reactive
-scholarship_entry_server(
-  "scholarship_entry",
-  record_id = reactive(values$current_resident),
-  redcap_url = app_config$redcap_url,
-  redcap_token = app_config$rdm_token,
-  data_dict = if (!is.null(values$app_data)) values$app_data$data_dict else NULL,
-  refresh_callback = refresh_scholarship
-)
 
  # ============================================================================
-# PLUS/DELTA MODULE INTEGRATION
+# INTRO PAGE OUTPUTS
 # ============================================================================
 
-# Plus/Delta Module using gmed
-mod_plus_delta_table_server(
-  "resident_plus_delta",
-  rdm_data = reactive({
-    req(values$app_data, values$current_resident)
-    
-    # Get assessment data for current resident
-    values$app_data$all_forms$assessment %>%
-      filter(record_id == values$current_resident)
-  }),
-  record_id = reactive(values$current_resident)
-)
+output$resident_name_display_intro <- renderText({
+  req(values$resident_info)
+  values$resident_info$name %||% "Resident"
+})
+
+output$resident_level_display_intro <- renderText({
+  req(values$resident_info, active_period())
+  period_info <- active_period()
   
-  # Test scholarship wrapper module
-# Test scholarship wrapper module
-observe({
-  req(values$authenticated, values$app_data, values$current_resident)
+  # Show both calculated level and period
+  level_text <- switch(as.character(period_info$pgy_year),
+                      "1" = "PGY-1 (Intern)",
+                      "2" = "PGY-2",
+                      "3" = "PGY-3",
+                      "Unknown")
   
-  # Test calling the wrapper
-  mod_scholarship_wrapper_server(
-    "test_scholarship_wrapper",
-    rdm_data = reactive(values$app_data),
-    record_id = reactive(values$current_resident),
-    period = NULL,
-    data_dict = reactive(values$app_data$data_dict)
+  level_text
+})
+
+output$resident_period_display_intro <- renderText({
+  req(values$resident_info, active_period())
+  period_info <- active_period()
+  
+  paste0(period_info$period_name, " (Period ", period_info$period_number, ")")
+})
+
+output$resident_academic_year_display_intro <- renderText({
+  req(values$resident_info, active_period())
+  period_info <- active_period()
+  
+  # Calculate academic year from period info
+  year <- as.numeric(format(Sys.Date(), "%Y"))
+  month <- as.numeric(format(Sys.Date(), "%m"))
+  
+  if (month >= 7) {
+    paste0(year, "-", year + 1)
+  } else {
+    paste0(year - 1, "-", year)
+  }
+})
+
+output$resident_grad_year_display_intro <- renderText({
+  req(values$resident_info, values$app_data$data_dict)
+  
+  # Get actual year from coded value
+  grad_yr_field <- values$app_data$data_dict %>%
+    filter(field_name == "grad_yr") %>%
+    slice(1)
+  
+  grad_yr_choices <- gmed::parse_redcap_choices(
+    grad_yr_field$select_choices_or_calculations[1]
+  )
+  
+  grad_yr_choices[as.character(values$resident_info$grad_yr)] %||% "Unknown"
+})
+
+output$resident_coach_display_intro <- renderText({
+  req(values$resident_info)
+  values$resident_info$coach %||% "Not assigned"
+})
+
+output$resident_coach_email_display_intro <- renderUI({
+  req(values$resident_info)
+  
+  email <- values$resident_info$coach_email
+  
+  if (!is.null(email) && nchar(trimws(email)) > 0) {
+    tags$a(
+      href = paste0("mailto:", email),
+      icon("envelope", class = "me-1"),
+      email,
+      class = "text-decoration-none"
+    )
+  } else {
+    tags$span(class = "text-muted", "No email on file")
+  }
+})
+
+output$resident_track_display_intro <- renderText({
+  req(values$resident_info)
+  
+  # Handle type - it's already a label, just display it
+  type_value <- values$resident_info$type
+  
+  if (is.character(type_value)) {
+    type_value  # Already "Categorical" or "Preliminary"
+  } else {
+    # If it's a code, translate it
+    switch(as.character(type_value),
+      "1" = "Preliminary",
+      "2" = "Categorical",
+      "Unknown")
+  }
+})
+
+# ============================================================================
+# PORTFOLIO CONTENT - DYNAMIC BASED ON CURRENT MODULE
+# ============================================================================
+
+current_module_index <- reactiveVal(1)
+
+output$portfolio_content <- renderUI({
+  req(values$authenticated, active_period())
+  
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  module_titles <- config$module_titles
+  
+  current_index <- current_module_index()
+  module_key <- modules[current_index]
+  
+  div(
+    class = "container py-4",
+    div(
+      class = "row",
+      div(
+        class = "col-lg-10 offset-lg-1",
+        
+        # Page header
+        h2(module_titles[[module_key]]),
+        p(class = "lead text-muted mb-4", 
+          paste("Period", period_info$period_number, "-", period_info$period_name)),
+        hr(),
+        
+        # Module content
+        uiOutput(paste0("module_", module_key)),
+        
+        # Navigation buttons
+        div(
+          class = "d-flex justify-content-between mt-4 pt-3 border-top",
+          
+          if (current_index > 1) {
+            actionButton(
+              "nav_prev_module",
+              "Previous",
+              class = "btn-outline-secondary",
+              icon = icon("arrow-left")
+            )
+          } else {
+            actionButton(
+              "nav_back_to_intro",
+              "Back to Introduction",
+              class = "btn-outline-secondary",
+              icon = icon("arrow-left")
+            )
+          },
+          
+          if (current_index < length(modules)) {
+            actionButton(
+              "nav_next_module",
+              paste("Continue to", module_titles[[modules[current_index + 1]]]),
+              class = "btn-primary",
+              icon = icon("arrow-right")
+            )
+          } else {
+            actionButton(
+              "nav_complete",
+              "Complete Portfolio Review",
+              class = "btn-success btn-lg",
+              icon = icon("check")
+            )
+          }
+        )
+      )
+    )
   )
 })
-  
-  # Progress Module (placeholder)
-  # observe({
-  #   req(values$authenticated, values$app_data)
-  #   # Progress visualization module will go here
-  # })
-  
-  # Goals Module (placeholder)
-  # observe({
-  #   req(values$authenticated, values$app_data)
-  #   # ILP goals module will go here
-  # })
-  
-  # Scholarship Module (placeholder)
-  # observe({
-  #   req(values$authenticated, values$app_data)
-  #   # Scholarship tracking module will go here
-  # })
-  
-  # Self-Assessment Module (placeholder)
-  # observe({
-  #   req(values$authenticated, values$app_data)
-  #   # Milestone self-assessment entry will go here
-  # })
 
+# Progress indicator
+output$progress_indicator <- renderUI({
+  req(values$authenticated, active_period())
+  
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  
+  current_index <- current_module_index()
+  total <- length(modules)
+  
+  div(
+    style = "min-width: 200px; padding: 8px;",
+    tags$small(
+      class = "text-muted me-2",
+      sprintf("Step %d of %d", current_index, total)
+    ),
+    tags$div(
+      class = "progress",
+      style = "height: 8px;",
+      tags$div(
+        class = "progress-bar bg-primary",
+        role = "progressbar",
+        style = paste0("width: ", round((current_index / total) * 100), "%;")
+      )
+    )
+  )
+})
+
+
+
+# ============================================================================
+# INITIALIZE MODULE SERVERS
+# ============================================================================
+
+observe({
+  req(values$authenticated, values$app_data, values$current_resident, active_period())
+  
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  
+  # Initialize server for each module
+  lapply(modules, function(module_key) {
+    
+    switch(module_key,
+      "scholarship" = {
+        mod_scholarship_wrapper_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info),
+          data_dict = reactive(values$app_data$data_dict)
+        )
+      },
+      "assessment_review" = {
+        gmed::mod_plus_delta_table_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive({
+            values$app_data$all_forms$assessment %>%
+              filter(record_id == values$current_resident)
+          }),
+          record_id = reactive(values$current_resident)
+        )
+      }
+      # Add other module initializations as you build them
+    )
+  })
+})
+
+
+# Navigate from intro to first module
+observeEvent(input$nav_intro_next, {
+  req(active_period())
+  current_module_index(1)
+  updateNavbarPage(session, "main_nav", selected = "portfolio")
+})
+
+# Previous button
+observeEvent(input$nav_prev_module, {
+  current_index <- current_module_index()
+  if (current_index > 1) {
+    current_module_index(current_index - 1)
+  }
+})
+
+# Back to intro button
+observeEvent(input$nav_back_to_intro, {
+  updateNavbarPage(session, "main_nav", selected = "intro")
+})
+
+# Next button
+observeEvent(input$nav_next_module, {
+  req(active_period())
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  
+  current_index <- current_module_index()
+  if (current_index < length(config$modules)) {
+    current_module_index(current_index + 1)
+  }
+})
+
+# Complete button
+observeEvent(input$nav_complete, {
+  updateNavbarPage(session, "main_nav", selected = "complete")
+})
+
+# ============================================================================
+# DYNAMIC NAVIGATION HANDLERS
+# ============================================================================
+
+observe({
+  req(values$authenticated, active_period())
+  
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  
+  # Create navigation observers for each page
+  lapply(seq_along(modules), function(i) {
+    module_key <- modules[i]
+    current_page <- paste0("page_", module_key)
+    
+    # Previous button
+    observeEvent(input[[paste0("nav_prev_", module_key)]], {
+      if (i > 1) {
+        prev_page <- paste0("page_", modules[i - 1])
+        updateNavbarPage(session, "main_nav", selected = prev_page)
+      } else {
+        updateNavbarPage(session, "main_nav", selected = "intro")
+      }
+    })
+    
+    # Next button
+    observeEvent(input[[paste0("nav_next_", module_key)]], {
+      if (i < length(modules)) {
+        next_page <- paste0("page_", modules[i + 1])
+        updateNavbarPage(session, "main_nav", selected = next_page)
+      } else {
+        updateNavbarPage(session, "main_nav", selected = "complete")
+      }
+    })
+  })
+})
 
   # ============================================================================
 # PERIOD DETECTION TEST (SAFE - DOESN'T CHANGE EXISTING FUNCTIONALITY)
 # ============================================================================
+# ============================================================================
+# PERIOD DETECTION TEST AND DEBUG
+# ============================================================================
 
 observe({
-  req(values$current_resident, values$app_data$residents)
+  req(values$current_resident, values$app_data$residents, values$app_data$data_dict)
   
   resident_info <- values$app_data$residents %>%
     filter(record_id == values$current_resident) %>%
@@ -442,21 +485,60 @@ observe({
   
   if (nrow(resident_info) == 0) return(NULL)
   
-  # Test period detection
-  detected_period <- tryCatch({
+  data_dict <- values$app_data$data_dict
+  
+  # Get grad_yr - try direct use first
+  grad_yr_value <- resident_info$grad_yr
+  grad_yr_actual <- suppressWarnings(as.numeric(grad_yr_value))
+  
+  # If not a valid year, try data dictionary translation
+  if (is.na(grad_yr_actual) || grad_yr_actual < 2020 || grad_yr_actual > 2040) {
+    grad_yr_field <- data_dict %>%
+      filter(field_name == "grad_yr") %>%
+      slice(1)
+    
+    grad_yr_choices <- gmed::parse_redcap_choices(
+      grad_yr_field$select_choices_or_calculations[1]
+    )
+    
+    grad_yr_actual <- as.numeric(grad_yr_choices[as.character(grad_yr_value)])
+  }
+  
+  # Handle type field - convert label to code if needed
+  type_value <- resident_info$type
+  type_code <- if (is.character(type_value) && tolower(type_value) == "categorical") {
+    2
+  } else if (is.character(type_value) && tolower(type_value) == "preliminary") {
+    1
+  } else {
+    as.numeric(type_value)
+  }
+  
+  # Handle type field - convert label to code if needed
+type_value <- resident_info$type
+type_code <- if (is.character(type_value) && tolower(type_value) == "categorical") {
+  2
+} else if (is.character(type_value) && tolower(type_value) == "preliminary") {
+  1
+} else {
+  as.numeric(type_value)
+}
+
+detected_period <- tryCatch({
   gmed::calculate_pgy_and_period(
-    grad_yr = resident_info$grad_yr,  # CHANGED from graduation_year
-    type = resident_info$residency_type %||% "Categorical",
+    grad_yr = grad_yr_actual,
+    type = type_code,  # ✅ CORRECT - Use converted code
     current_date = Sys.Date()
   )
 }, error = function(e) {
-  message("Period detection error: ", e$message)
-  NULL
+  return(paste("Error:", e$message))
 })
   
   if (!is.null(detected_period)) {
     message("=== PERIOD DETECTION TEST ===")
     message("Resident: ", values$current_resident)
+    message("Type (original): ", type_value, " -> Code: ", type_code)
+    message("Grad Year: ", grad_yr_value, " -> Actual: ", grad_yr_actual)
     message("Period Number: ", detected_period$period_number)
     message("Period Name: ", detected_period$period_name)
     message("PGY Year: ", detected_period$pgy_year)
@@ -469,9 +551,10 @@ observe({
     }
   }
 })
-  
-# Period debug output
-# Period debug output
+
+
+
+# Period debug output for UI
 output$period_debug_info <- renderPrint({
   req(values$current_resident, values$app_data$residents, values$app_data$data_dict)
   
@@ -483,7 +566,12 @@ output$period_debug_info <- renderPrint({
   
   data_dict <- values$app_data$data_dict
   
-  # Use gmed's parse_redcap_choices to get grad_yr mapping
+  # Get grad_yr - try direct use first, then translate if needed
+grad_yr_value <- resident_info$grad_yr
+grad_yr_actual <- suppressWarnings(as.numeric(grad_yr_value))
+
+# If not a valid year, try data dictionary translation
+if (is.na(grad_yr_actual) || grad_yr_actual < 2020 || grad_yr_actual > 2040) {
   grad_yr_field <- data_dict %>%
     filter(field_name == "grad_yr") %>%
     slice(1)
@@ -492,8 +580,8 @@ output$period_debug_info <- renderPrint({
     grad_yr_field$select_choices_or_calculations[1]
   )
   
-  # Get actual year from coded value
-  grad_yr_actual <- as.numeric(grad_yr_choices[as.character(resident_info$grad_yr)])
+  grad_yr_actual <- as.numeric(grad_yr_choices[as.character(grad_yr_value)])
+}
   
   # Use gmed's existing translate_resident_type
   res_type_label <- gmed::translate_resident_type(resident_info$type, data_dict)
@@ -501,7 +589,7 @@ output$period_debug_info <- renderPrint({
   detected_period <- tryCatch({
     gmed::calculate_pgy_and_period(
       grad_yr = grad_yr_actual,
-      type = resident_info$type,
+      type = resident_info$type,  # ✅ CORRECT field name
       current_date = Sys.Date()
     )
   }, error = function(e) {
@@ -523,7 +611,8 @@ output$period_debug_info <- renderPrint({
   } else {
     list(
       error = "Period detection issue",
-      resident_type = resident_info$type,
+      resident_type_coded = resident_info$type,
+      resident_type_label = res_type_label,
       grad_yr_coded = resident_info$grad_yr,
       grad_yr_actual = grad_yr_actual,
       period_result = detected_period
