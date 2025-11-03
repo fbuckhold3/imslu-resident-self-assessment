@@ -355,6 +355,34 @@ output$progress_indicator <- renderUI({
 
 
 # ============================================================================
+# RENDER MODULE UIs DYNAMICALLY
+# ============================================================================
+
+observe({
+  req(values$authenticated, active_period())
+  
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  
+  # Render UI for each module
+  lapply(modules, function(module_key) {
+    output[[paste0("module_", module_key)]] <- renderUI({
+      
+      # Get the module config
+      module_config <- get_module_functions(module_key, values$app_data$data_dict)
+      
+      # Get the UI function name and call it
+      ui_function_name <- module_config$ui
+      ui_function <- get(ui_function_name, mode = "function")
+      
+      # Call the UI function with the module's namespace
+      ui_function(paste0("wrapper_", module_key))
+    })
+  })
+})
+  
+# ============================================================================
 # INITIALIZE MODULE SERVERS
 # ============================================================================
 
@@ -372,10 +400,19 @@ observe({
       "scholarship" = {
         mod_scholarship_wrapper_server(
           paste0("wrapper_", module_key),
-          rdm_data = reactive(values$app_data),
+          rdm_data = reactive(values$app_data$all_forms$self_evaluation),     # CHANGE THIS
           record_id = reactive(values$current_resident),
-          period = reactive(period_info),
-          data_dict = reactive(values$app_data$data_dict)
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict
+        )
+      },
+      "career_planning" = {
+        mod_career_planning_wrapper_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data$all_forms$s_eval),     # CHANGE THIS
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict
         )
       },
       "assessment_review" = {
@@ -388,11 +425,13 @@ observe({
           record_id = reactive(values$current_resident)
         )
       }
-      # Add other module initializations as you build them
     )
   })
 })
-
+  
+  # ============================================================================
+# NAVIGATION EVENT HANDLERS
+# ============================================================================
 
 # Navigate from intro to first module
 observeEvent(input$nav_intro_next, {
@@ -431,47 +470,7 @@ observeEvent(input$nav_complete, {
   updateNavbarPage(session, "main_nav", selected = "complete")
 })
 
-# ============================================================================
-# DYNAMIC NAVIGATION HANDLERS
-# ============================================================================
-
-observe({
-  req(values$authenticated, active_period())
   
-  period_info <- active_period()
-  config <- get_period_structure(period_info$period_number)
-  modules <- config$modules
-  
-  # Create navigation observers for each page
-  lapply(seq_along(modules), function(i) {
-    module_key <- modules[i]
-    current_page <- paste0("page_", module_key)
-    
-    # Previous button
-    observeEvent(input[[paste0("nav_prev_", module_key)]], {
-      if (i > 1) {
-        prev_page <- paste0("page_", modules[i - 1])
-        updateNavbarPage(session, "main_nav", selected = prev_page)
-      } else {
-        updateNavbarPage(session, "main_nav", selected = "intro")
-      }
-    })
-    
-    # Next button
-    observeEvent(input[[paste0("nav_next_", module_key)]], {
-      if (i < length(modules)) {
-        next_page <- paste0("page_", modules[i + 1])
-        updateNavbarPage(session, "main_nav", selected = next_page)
-      } else {
-        updateNavbarPage(session, "main_nav", selected = "complete")
-      }
-    })
-  })
-})
-
-  # ============================================================================
-# PERIOD DETECTION TEST (SAFE - DOESN'T CHANGE EXISTING FUNCTIONALITY)
-# ============================================================================
 # ============================================================================
 # PERIOD DETECTION TEST AND DEBUG
 # ============================================================================

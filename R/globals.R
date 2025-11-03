@@ -19,6 +19,13 @@ library(ggplot2)
 library(gmed)
 
 # ============================================================================
+# SSL CONFIGURATION FOR REDCAP
+# ============================================================================
+
+# Disable SSL verification for REDCap (institutional certificate issues)
+httr::set_config(httr::config(ssl_verifypeer = FALSE, ssl_verifyhost = FALSE))
+
+# ============================================================================
 # CONFIGURATION - Define BEFORE sourcing modules
 # ============================================================================
 app_config <- list(
@@ -44,6 +51,9 @@ source("R/config/field_mappings.R")
 
 # Source wrapper modules (once created)
 source("R/modules/wrappers/mod_scholarship_wrapper.R")
+source("R/modules/wrappers/mod_career_planning_wrapper.R")
+
+source("R/submit_self_eval_data.R")
 
 # ============================================================================
 # DATA LOADING
@@ -53,11 +63,11 @@ app_data_store <- NULL
 load_app_data <- function() {
   if (is.null(app_data_store)) {
     message("=== Loading RDM 2.0 Data ===")
-    
     tryCatch({
       complete_data <- gmed::load_rdm_complete(
         rdm_token = app_config$rdm_token,
         redcap_url = app_config$redcap_url,
+        raw_or_label = "raw",  # ADD THIS - use raw to get checkboxes
         verbose = app_config$debug_mode
       )
       
@@ -88,3 +98,4 @@ load_app_data <- function() {
 message("=== RDM 2.0 Self-Assessment App ===")
 message("Debug mode: ", app_config$debug_mode)
 message("Ready to load data on first access")
+

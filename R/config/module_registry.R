@@ -19,12 +19,13 @@ get_module_functions <- function(module_id, data_dict = NULL) {
       title = "Scholarly Activities",
       icon = "graduation-cap"
     ),
-    wellness = list(
-      ui = "mod_wellness_entry_ui",
-      server = "mod_wellness_entry_server",
+     career_planning = list(                           # ADD THIS ENTRY
+      ui = "mod_career_planning_wrapper_ui",
+      server = "mod_career_planning_wrapper_server",
       title = "Wellness and Career Planning",
-      icon = "heart"
+      icon = "briefcase-medical"
     ),
+  
     program_feedback = list(
       ui = "mod_program_feedback_ui",
       server = "mod_program_feedback_server",

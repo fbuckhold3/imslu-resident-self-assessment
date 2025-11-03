@@ -21,4 +21,4 @@ shinyApp(ui = ui, server = server)
 #VzvHJY
 #PkWIkr
 
-#.rs.api.restartSession()
+

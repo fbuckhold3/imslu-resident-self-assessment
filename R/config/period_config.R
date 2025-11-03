@@ -107,7 +107,7 @@ get_period_structure <- function(period_number) {
         milestone_self_eval = "Milestone Self-Evaluation"
       ),
       skip_sections = c("scholarship", "program_feedback", "assessment_review", 
-                       "ilp_generation", "wellness", "board_prep", "graduation_data")
+                       "ilp_generation", "career_planning", "board_prep", "graduation_data")
     ))
   }
   
@@ -126,35 +126,35 @@ get_period_structure <- function(period_number) {
         board_prep = "Board Preparation",
         milestone_self_eval = "Milestone Self-Evaluation"
       ),
-      skip_sections = c("wellness", "ilp_generation", "learning", 
+      skip_sections = c("career_planning", "ilp_generation", "learning", 
                        "skills_review", "goals", "concerns", "learning_styles")
     ))
   }
   
   # Periods 1-5: Standard Structure
-  return(list(
-    period_name = switch(as.character(period_number),
-                        "1" = "Mid Intern",
-                        "2" = "End Intern", 
-                        "3" = "Mid PGY2",
-                        "4" = "End PGY2",
-                        "5" = "Mid PGY3"),
-    period_number = period_number,
-    modules = c("scholarship", "wellness", "program_feedback",
-                "assessment_review", "learning", "milestone_self_eval", 
-                "ilp_generation"),
-    module_titles = list(
-      scholarship = "Scholarship",
-      wellness = "Wellness and Career Planning",
-      program_feedback = "Program Feedback",
-      assessment_review = "Assessment Review",
-      learning = "Learning",
-      milestone_self_eval = "Milestone Self-Evaluation",
-      ilp_generation = "ILP Generation"
-    ),
-    skip_sections = c("skills_review", "graduation_data", "board_prep",
-                     "goals", "concerns", "learning_styles")
-  ))
+return(list(
+  period_name = switch(as.character(period_number),
+                      "1" = "Mid Intern",
+                      "2" = "End Intern", 
+                      "3" = "Mid PGY2",
+                      "4" = "End PGY2",
+                      "5" = "Mid PGY3"),
+  period_number = period_number,
+  modules = c("scholarship", "career_planning", "program_feedback",    # CHANGE HERE
+              "assessment_review", "learning", "milestone_self_eval", 
+              "ilp_generation"),
+  module_titles = list(
+    scholarship = "Scholarship",
+    career_planning = "Wellness and Career Planning",                  # CHANGE HERE
+    program_feedback = "Program Feedback",
+    assessment_review = "Assessment Review",
+    learning = "Learning",
+    milestone_self_eval = "Milestone Self-Evaluation",
+    ilp_generation = "ILP Generation"
+  ),
+  skip_sections = c("skills_review", "graduation_data", "board_prep",
+                   "goals", "concerns", "learning_styles")
+))
 }
 
 #' Determine Current Period from Resident Data
@@ -193,7 +193,7 @@ determine_resident_period <- function(grad_year, residency_type = "Categorical",
 get_module_ui_function <- function(module_id) {
   module_map <- c(
     scholarship = "mod_scholarship_ui",
-    wellness = "mod_wellness_career_ui",
+    career_planning = "mod_career_planning_wrapper_ui",    # CHANGE HERE
     program_feedback = "mod_program_feedback_ui",
     assessment_review = "mod_assessment_review_ui",
     learning = "mod_learning_ui",
@@ -220,7 +220,7 @@ get_module_ui_function <- function(module_id) {
 get_module_server_function <- function(module_id) {
   module_map <- c(
     scholarship = "mod_scholarship_server",
-    wellness = "mod_wellness_career_server",
+    career_planning = "mod_career_planning_wrapper_server",    # CHANGE HERE
     program_feedback = "mod_program_feedback_server",
     assessment_review = "mod_assessment_review_server",
     learning = "mod_learning_server",
