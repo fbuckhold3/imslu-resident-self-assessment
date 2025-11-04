@@ -32,34 +32,46 @@ get_resident_period_smart <- function(resident_data,
   if (!is.null(resident_data$graduation_year) && 
       !is.na(resident_data$graduation_year)) {
     
-    tryCatch({
-      period_calc <- calculate_pgy_and_period(
-        grad_yr = resident_data$graduation_year,
-        type = resident_data$residency_type %||% "Categorical",
-        current_date = current_date
-      )
+    # Try automatic detection if we have required data
+if (!is.null(resident_data$graduation_year) && 
+    !is.na(resident_data$graduation_year)) {
+  
+  tryCatch({  # ADD THIS LINE - YOU'RE MISSING IT!
+    
+    type_code <- if (is.character(resident_data$residency_type)) {
+      if (tolower(resident_data$residency_type) == "categorical") 2 else 1
+    } else {
+      as.numeric(resident_data$residency_type)
+    }
+    
+    period_calc <- calculate_pgy_and_period(
+      grad_yr = resident_data$graduation_year,
+      type = type_code,
+      current_date = current_date
+    )
+    
+    # Check if calculation is valid
+    if (!is.null(period_calc$period_number) && 
+        !is.na(period_calc$period_number) &&
+        period_calc$period_number %in% 1:7 &&
+        period_calc$is_valid) {
       
-      # Check if calculation is valid
-      if (!is.null(period_calc$period_number) && 
-          !is.na(period_calc$period_number) &&
-          period_calc$period_number %in% 1:7 &&
-          period_calc$is_valid) {
-        
-        config <- get_period_structure(period_calc$period_number)
-        
-        return(list(
-          period_number = period_calc$period_number,
-          period_name = config$period_name,
-          pgy_year = period_calc$pgy_year,
-          detection_method = "automatic",
-          is_default = FALSE,
-          calculation_details = period_calc
-        ))
-      }
+      config <- get_period_structure(period_calc$period_number)
       
-    }, error = function(e) {
-      message("Period calculation failed: ", e$message)
-    })
+      return(list(
+        period_number = period_calc$period_number,
+        period_name = config$period_name,
+        pgy_year = period_calc$pgy_year,
+        detection_method = "automatic",
+        is_default = FALSE,
+        calculation_details = period_calc
+      ))
+    }
+    
+  }, error = function(e) {
+    message("Period calculation failed: ", e$message)
+  })
+}
   }
   
   # Default to Period 7 (safest for new/unknown residents)

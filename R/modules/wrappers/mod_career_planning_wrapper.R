@@ -7,20 +7,45 @@ mod_career_planning_wrapper_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
-    h3("Wellness and Career Planning"),
+    # WELLNESS SECTION
+    h3("Wellness Check-In"),
     hr(),
     
-    # Display section - shows historical data
-    uiOutput(ns("career_display")),
+    # Display previous wellness comment
+    uiOutput(ns("previous_wellness_display")),
     
+    # Current wellness entry
+    h4("Current Wellness"),
+    p("How are you doing from a wellness standpoint? Are there issues we can help with, or should be aware of to support you?"),
+    textAreaInput(
+      ns("wellness"),
+      label = NULL,
+      rows = 4,
+      placeholder = "Enter your wellness reflection..."
+    ),
+    
+    br(),
     hr(),
     
-    # Entry section - for new input
+    # CAREER PLANNING SECTION
+    h3("Career Planning"),
+    hr(),
+    
+    # Display previous career planning
+    uiOutput(ns("previous_career_display")),
+    
+    # Current career planning entry
     h4("Update Career Planning"),
     p("Enter your current career planning thoughts and goals."),
+    uiOutput(ns("career_form")),
     
-    # Dynamic form fields pulled from data dictionary
-    uiOutput(ns("career_form"))
+    br(),
+    
+    actionButton(
+      ns("submit"),
+      "Submit Wellness and Career Planning",
+      class = "btn-primary"
+    )
   )
 }
 
@@ -107,17 +132,46 @@ mod_career_planning_wrapper_server <- function(id, rdm_data, record_id, period, 
       setNames(codes, labels)
     }
     
-    # Display existing career planning data
-    output$career_display <- renderUI({
-      req(rdm_data(), period())
-      
-      gmed::display_career_planning(
-        rdm_data = rdm_data(),
-        record_id = record_id(),
-        current_period = period(),
-        data_dict = data_dict
-      )
-    })
+#Display previous wellness
+output$previous_wellness_display <- renderUI({
+  req(rdm_data(), period())
+  
+  # Get previous period data
+  prev_period <- as.numeric(period()) - 1
+  if (prev_period < 1) return(NULL)
+  
+  prev_data <- rdm_data() %>%
+    dplyr::filter(
+      record_id == !!record_id(),
+      redcap_repeat_instrument == "S Eval",
+      s_e_period == as.character(prev_period)
+    )
+  
+  if (nrow(prev_data) == 0 || is.na(prev_data$s_e_well[1])) {
+    return(div(class = "alert alert-info", "No previous wellness comments."))
+  }
+  
+  div(
+    class = "card mb-3 bg-light",
+    div(
+      class = "card-body",
+      h5(class = "card-title", "Previous Wellness Comments (Period ", prev_period, ")"),
+      p(class = "card-text", prev_data$s_e_well[1])
+    )
+  )
+})
+
+# Display previous career planning
+output$previous_career_display <- renderUI({
+  req(rdm_data(), period())
+  
+  gmed::display_career_planning(
+    rdm_data = rdm_data(),
+    record_id = record_id(),
+    current_period = period(),
+    data_dict = data_dict
+  )
+})
     
     # Dynamic form rendering
     output$career_form <- renderUI({
@@ -140,15 +194,7 @@ mod_career_planning_wrapper_server <- function(id, rdm_data, record_id, period, 
       track_type_choices <- parse_choices(get_choices_string(track_type_field))
       
       tagList(
-        # Wellness question
-        textAreaInput(
-          ns("wellness"),
-          label = get_field_label(wellness_field),
-          rows = 4,
-          placeholder = "Reflect on your wellness, work-life balance, and self-care..."
-        ),
-        
-        br(),
+
         
         # Career Path - MULTIPLE SELECTION
         checkboxGroupInput(
@@ -205,14 +251,6 @@ mod_career_planning_wrapper_server <- function(id, rdm_data, record_id, period, 
             label = get_field_label(track_type_field),
             choices = track_type_choices
           )
-        ),
-        
-        br(),
-        
-        actionButton(
-          ns("submit"),
-          "Submit Wellness and Career Planning",
-          class = "btn-primary"
         )
       )
     })
