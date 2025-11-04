@@ -110,29 +110,37 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
     )
     
     # Load existing data when resident changes
+    # Load existing data when resident changes
     observe({
       req(rdm_data(), record_id())
       
       # Get s_eval form data for this resident
-      s_eval_data <- rdm_data()$all_forms$s_eval %>%
-        dplyr::filter(record_id == !!record_id())
-      
-      if (nrow(s_eval_data) > 0) {
-        # Load most recent data (in case multiple entries)
-        latest_data <- s_eval_data %>% dplyr::slice_tail(n = 1)
+      if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
+        s_eval_data <- rdm_data()$all_forms$s_eval %>%
+          dplyr::filter(record_id == !!record_id())
         
-        # Update inputs with existing data
-        if (!is.na(latest_data$s_e_prog_plus)) {
-          updateTextAreaInput(session, "s_e_prog_plus", value = latest_data$s_e_prog_plus)
-        }
-        if (!is.na(latest_data$s_e_prog_delta)) {
-          updateTextAreaInput(session, "s_e_prog_delta", value = latest_data$s_e_prog_delta)
-        }
-        if (!is.na(latest_data$s_e_progconf)) {
-          updateTextAreaInput(session, "s_e_progconf", value = latest_data$s_e_progconf)
-        }
-        if (!is.na(latest_data$s_e_progfeed)) {
-          updateTextAreaInput(session, "s_e_progfeed", value = latest_data$s_e_progfeed)
+        if (nrow(s_eval_data) > 0) {
+          # Load most recent data
+          latest_data <- s_eval_data %>% 
+            dplyr::filter(!is.na(s_e_period)) %>%
+            dplyr::arrange(desc(redcap_repeat_instance)) %>%
+            dplyr::slice(1)
+          
+          # Update inputs with existing data
+          if (nrow(latest_data) > 0) {
+            if (!is.na(latest_data$s_e_prog_plus) && latest_data$s_e_prog_plus != "") {
+              updateTextAreaInput(session, "s_e_prog_plus", value = latest_data$s_e_prog_plus)
+            }
+            if (!is.na(latest_data$s_e_prog_delta) && latest_data$s_e_prog_delta != "") {
+              updateTextAreaInput(session, "s_e_prog_delta", value = latest_data$s_e_prog_delta)
+            }
+            if (!is.na(latest_data$s_e_progconf) && latest_data$s_e_progconf != "") {
+              updateTextAreaInput(session, "s_e_progconf", value = latest_data$s_e_progconf)
+            }
+            if (!is.na(latest_data$s_e_progfeed) && latest_data$s_e_progfeed != "") {
+              updateTextAreaInput(session, "s_e_progfeed", value = latest_data$s_e_progfeed)
+            }
+          }
         }
       }
     })
@@ -219,16 +227,15 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       message("Calling submit_self_eval_data...")
       
       # Call the submission function
+        # Call the submission function - now uses gmed package
       result <- tryCatch({
-        submit_self_eval_data(
+        gmed::submit_self_eval_data(  # Explicitly call gmed version
           record_id = record_id(),
           period = period_number,
           data = feedback_data
         )
       }, error = function(e) {
         message("ERROR in submit_self_eval_data: ", e$message)
-        message("Error class: ", class(e))
-        message("Error trace: ", paste(e$trace, collapse = "\n"))
         list(success = FALSE, message = paste("R error:", e$message))
       })
       

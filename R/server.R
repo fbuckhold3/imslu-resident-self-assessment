@@ -376,6 +376,10 @@ active_period <- reactive({
   # INITIALIZE MODULE SERVERS
   # ============================================================================
   
+  # ============================================================================
+  # INITIALIZE MODULE SERVERS
+  # ============================================================================
+  
   observe({
     req(values$authenticated, values$app_data, values$current_resident, active_period())
     
@@ -400,6 +404,15 @@ active_period <- reactive({
           mod_career_planning_wrapper_server(
             paste0("wrapper_", module_key),
             rdm_data = reactive(values$app_data$all_forms$s_eval),
+            record_id = reactive(values$current_resident),
+            period = reactive(period_info$period_number),
+            data_dict = values$app_data$data_dict
+          )
+        },
+        "program_feedback" = {
+          mod_program_feedback_server(
+            paste0("wrapper_", module_key),
+            rdm_data = reactive(values$app_data),
             record_id = reactive(values$current_resident),
             period = reactive(period_info$period_number),
             data_dict = values$app_data$data_dict
