@@ -32,12 +32,12 @@ get_module_functions <- function(module_id, data_dict = NULL) {
       title = "Program Feedback",
       icon = "comments"
     ),
-    assessment_review = list(
-      ui = "mod_assessment_wrapper_ui",
-      server = "mod_assessment_wrapper_server",
-      title = "Assessment Review",
-      icon = "clipboard-check"
-    ),
+    "assessment_review" = list(
+  ui = "mod_assessment_wrapper_ui",
+  server = "mod_assessment_wrapper_server",
+  requires_data = c("assessment", "questions"),
+  title = "Assessment Review"
+),
     learning = list(
       ui = "mod_learning_entry_ui",
       server = "mod_learning_entry_server",

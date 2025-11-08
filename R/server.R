@@ -419,15 +419,14 @@ active_period <- reactive({
           )
         },
         "assessment_review" = {
-          gmed::mod_plus_delta_table_server(
-            paste0("wrapper_", module_key),
-            rdm_data = reactive({
-              values$app_data$all_forms$assessment %>%
-                filter(record_id == values$current_resident)
-            }),
-            record_id = reactive(values$current_resident)
-          )
-        }
+  mod_assessment_wrapper_server(
+    paste0("wrapper_", module_key),
+    rdm_data = reactive(values$app_data),  # Pass the whole app_data structure
+    record_id = reactive(values$current_resident),
+    period = reactive(period_info$period_number),
+    data_dict = values$app_data$data_dict
+  )
+}
       )
     })
   })

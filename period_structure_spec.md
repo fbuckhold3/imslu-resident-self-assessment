@@ -3,13 +3,13 @@
 ## Period Flow Design
 
 ### Periods 1-5: Standard Self-Evaluation (Mid-Intern through Mid-PGY3)
-1. Scholarship
-2. Wellness and Career Planning
-3. Program Feedback
-4. Assessment Review
-5. Learning
-6. Milestone Self-Evaluation
-7. ILP Generation
+1. Scholarship x
+2. Wellness and Career Planning x
+3. Program Feedback x
+4. Assessment Review --
+5. Learning 0
+6. Milestone Self-Evaluation 0
+7. ILP Generation 0
 
 ### Period 6: Graduation (Feb-June, PGY3)
 1. Scholarship
