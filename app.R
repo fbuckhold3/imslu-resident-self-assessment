@@ -18,31 +18,13 @@ source("R/server.R")
 # Run the application
 shinyApp(ui = ui, server = server)
 
-#VzvHJY
-#PkWIkr
+#VzvHJY - record_id 99
+#PkWIkr - record_id 94
 
 app_data <- complete_data
 
-# Check what plus_delta is receiving
-app_data$all_forms$assessment %>%
-  filter(record_id == "94") %>%
-  filter(!is.na(redcap_repeat_instrument) & 
-         redcap_repeat_instrument == "Assessment") %>%
-  nrow()
+td <- app_data$all_forms$test_data %>%
+  filter(record_id == "94")
 
-app_data$all_forms$assessment %>%
-  filter(record_id == "94") %>%
-  filter(!is.na(redcap_repeat_instrument) & 
-         redcap_repeat_instrument == "assessment") %>%
-  nrow()
+print(td)
 
-
-# Check the instrument name
-app_data$all_forms$assessment %>%
-  filter(record_id == "94") %>%
-  count(redcap_repeat_instrument)
-
-app_data$all_forms$questions %>%
-  filter(record_id == "94") %>%
-  select(record_id, redcap_repeat_instrument, q_date, q_rotation) %>%
-  head(10)

@@ -426,6 +426,15 @@ active_period <- reactive({
     period = reactive(period_info$period_number),
     data_dict = values$app_data$data_dict
   )
+},
+      "learning" = {
+  mod_learning_server(
+    paste0("wrapper_", module_key),
+    rdm_data = reactive(values$app_data),  # Pass full app data
+    record_id = reactive(values$current_resident),
+    period = reactive(period_info$period_number),
+    data_dict = values$app_data$data_dict
+  )
 }
       )
     })

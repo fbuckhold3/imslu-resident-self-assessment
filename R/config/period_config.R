@@ -205,10 +205,10 @@ determine_resident_period <- function(grad_year, residency_type = "Categorical",
 get_module_ui_function <- function(module_id) {
   module_map <- c(
     scholarship = "mod_scholarship_ui",
-    career_planning = "mod_career_planning_wrapper_ui",    # CHANGE HERE
+    career_planning = "mod_career_planning_wrapper_ui",
     program_feedback = "mod_program_feedback_ui",
     assessment_review = "mod_assessment_review_ui",
-    learning = "mod_learning_ui",
+    learning = "mod_learning_ui",  # ADD THIS LINE
     milestone_self_eval = "mod_milestone_entry_ui",
     ilp_generation = "mod_ilp_generation_ui",
     graduation_data = "mod_graduation_data_ui",
@@ -232,10 +232,10 @@ get_module_ui_function <- function(module_id) {
 get_module_server_function <- function(module_id) {
   module_map <- c(
     scholarship = "mod_scholarship_server",
-    career_planning = "mod_career_planning_wrapper_server",    # CHANGE HERE
+    career_planning = "mod_career_planning_wrapper_server",
     program_feedback = "mod_program_feedback_server",
     assessment_review = "mod_assessment_review_server",
-    learning = "mod_learning_server",
+    learning = "mod_learning_server",  # ADD THIS LINE
     milestone_self_eval = "mod_milestone_entry_server",
     ilp_generation = "mod_ilp_generation_server",
     graduation_data = "mod_graduation_data_server",

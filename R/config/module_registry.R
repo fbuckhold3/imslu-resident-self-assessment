@@ -39,11 +39,11 @@ get_module_functions <- function(module_id, data_dict = NULL) {
   title = "Assessment Review"
 ),
     learning = list(
-      ui = "mod_learning_entry_ui",
-      server = "mod_learning_entry_server",
-      title = "Learning Activities",
-      icon = "book"
-    ),
+  ui = "mod_learning_ui",           # CHANGE THIS
+  server = "mod_learning_server",   # CHANGE THIS
+  title = "Learning & Development",
+  icon = "book"
+),
     milestone_self_eval = list(
       ui = "mod_milestone_entry_ui",    # gmed module
       server = "mod_milestone_entry_server",

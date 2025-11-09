@@ -56,6 +56,7 @@ source("R/modules/wrappers/mod_assessment_wrapper.R")
 
 # Source individual modules
 source("R/modules/mod_program_feedback.R")
+source("R/modules/mod_learning.R")
 
 
 # ============================================================================
