@@ -376,69 +376,81 @@ active_period <- reactive({
   # INITIALIZE MODULE SERVERS
   # ============================================================================
   
-  # ============================================================================
-  # INITIALIZE MODULE SERVERS
-  # ============================================================================
+ # ============================================================================
+# INITIALIZE MODULE SERVERS
+# ============================================================================
+
+observe({
+  req(values$authenticated, values$app_data, values$current_resident, active_period())
   
-  observe({
-    req(values$authenticated, values$app_data, values$current_resident, active_period())
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  
+  # Initialize server for each module
+  lapply(modules, function(module_key) {
     
-    period_info <- active_period()
-    config <- get_period_structure(period_info$period_number)
-    modules <- config$modules
-    
-    # Initialize server for each module
-    lapply(modules, function(module_key) {
-      
-      switch(module_key,
-        "scholarship" = {
-          mod_scholarship_wrapper_server(
-            paste0("wrapper_", module_key),
-            rdm_data = reactive(values$app_data$all_forms$scholarship),
-            record_id = reactive(values$current_resident),
-            period = reactive(period_info$period_number),
-            data_dict = values$app_data$data_dict
-          )
-        },
-        "career_planning" = {
-          mod_career_planning_wrapper_server(
-            paste0("wrapper_", module_key),
-            rdm_data = reactive(values$app_data$all_forms$s_eval),
-            record_id = reactive(values$current_resident),
-            period = reactive(period_info$period_number),
-            data_dict = values$app_data$data_dict
-          )
-        },
-        "program_feedback" = {
-          mod_program_feedback_server(
-            paste0("wrapper_", module_key),
-            rdm_data = reactive(values$app_data),
-            record_id = reactive(values$current_resident),
-            period = reactive(period_info$period_number),
-            data_dict = values$app_data$data_dict
-          )
-        },
-        "assessment_review" = {
-  mod_assessment_wrapper_server(
-    paste0("wrapper_", module_key),
-    rdm_data = reactive(values$app_data),  # Pass the whole app_data structure
-    record_id = reactive(values$current_resident),
-    period = reactive(period_info$period_number),
-    data_dict = values$app_data$data_dict
-  )
-},
+    switch(module_key,
+      "scholarship" = {
+        mod_scholarship_wrapper_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data$all_forms$scholarship),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict
+        )
+      },
+      "career_planning" = {
+        mod_career_planning_wrapper_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data$all_forms$s_eval),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict
+        )
+      },
+      "program_feedback" = {
+        mod_program_feedback_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict
+        )
+      },
+      "assessment_review" = {
+        mod_assessment_wrapper_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict
+        )
+      },
       "learning" = {
-  mod_learning_server(
-    paste0("wrapper_", module_key),
-    rdm_data = reactive(values$app_data),  # Pass full app data
-    record_id = reactive(values$current_resident),
-    period = reactive(period_info$period_number),
-    data_dict = values$app_data$data_dict
-  )
-}
-      )
-    })
-  })
+        mod_learning_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict
+        )
+      },
+      "milestone_self_eval" = {
+        mod_milestone_entry_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_name)
+        )
+      }
+    )
+  })  # <-- ADD THIS: Close the lapply
+})    # <-- ADD THIS: Close the observe
+
+# ============================================================================
+# NAVIGATION EVENT HANDLERS
+# ============================================================================
   
   # ============================================================================
   # NAVIGATION EVENT HANDLERS

@@ -53,6 +53,7 @@ source("R/config/field_mappings.R")
 source("R/modules/wrappers/mod_scholarship_wrapper.R")
 source("R/modules/wrappers/mod_career_planning_wrapper.R")
 source("R/modules/wrappers/mod_assessment_wrapper.R")
+source("R/modules/wrappers/mod_milestone_self_eval_wrapper.R")
 
 # Source individual modules
 source("R/modules/mod_program_feedback.R")

@@ -23,6 +23,11 @@ shinyApp(ui = ui, server = server)
 
 app_data <- complete_data
 
+miles <- app_data$all_forms$milestone_selfevaluation_c33c %>%
+  filter(record_id == "94")
+
+print(miles)
+
 td <- app_data$all_forms$test_data %>%
   filter(record_id == "94")
 
