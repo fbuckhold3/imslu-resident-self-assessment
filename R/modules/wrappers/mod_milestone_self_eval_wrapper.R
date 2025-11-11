@@ -235,62 +235,42 @@ mod_milestone_entry_server <- function(id, record_id, period, rdm_data) {
 # ========================================================================
 
 # Render previous self plot (PLOTLY)
+# Render previous self plot (PLOTLY)
 output$prev_self_plot <- plotly::renderPlotly({
   req(self_milestone_data(), record_id())
   
   prev_period <- previous_period()
   
-  # Debug inside the reactive context
-  message("=== SELF SPIDER PLOT DEBUG ===")
-  message("resident_id: ", record_id())
-  message("period_text: ", prev_period)
-  message("Data rows for this resident: ", 
-          nrow(self_milestone_data()$data %>% dplyr::filter(record_id == !!record_id())))
-  
-  if (!is.na(prev_period)) {
-    message("Data for this period: ",
-            nrow(self_milestone_data()$data %>% 
-                 dplyr::filter(record_id == !!record_id(), period_name == prev_period)))
-  }
-  
   if (is.na(prev_period)) {
-    # Empty plotly for no previous period
-    plotly::plot_ly() %>%
-      plotly::add_annotations(
-        text = "No previous assessment period",
-        x = 0.5, y = 0.5,
-        showarrow = FALSE,
-        font = list(size = 16, color = "gray")
-      ) %>%
-      plotly::layout(
-        xaxis = list(visible = FALSE),
-        yaxis = list(visible = FALSE)
-      )
-  } else {
-    tryCatch({
-      gmed::create_enhanced_milestone_spider_plot(
-        milestone_data = self_milestone_data()$data,
-        median_data = self_milestone_data()$medians,
-        resident_id = record_id(),
-        period_text = prev_period,
-        milestone_type = "self",
-        resident_data = rdm_data()$residents
-      )
-    }, error = function(e) {
-      message("Error rendering self plot: ", e$message)
-      plotly::plot_ly() %>%
-        plotly::add_annotations(
-          text = "No data available",
-          x = 0.5, y = 0.5,
-          showarrow = FALSE,
-          font = list(size = 14, color = "orange")
-        ) %>%
-        plotly::layout(
-          xaxis = list(visible = FALSE),
-          yaxis = list(visible = FALSE)
-        )
-    })
+    return(plotly::plotly_empty() %>%
+             plotly::add_annotations(
+               text = "No previous assessment period",
+               x = 0.5, y = 0.5, showarrow = FALSE,
+               font = list(size = 16, color = "gray")
+             ))
   }
+  
+  tryCatch({
+    dashboard <- gmed::create_milestone_overview_dashboard(
+      milestone_results = milestone_results(),
+      resident_id = record_id(),
+      period_text = prev_period,
+      milestone_type = "self",
+      milestone_system = "rep",
+      resident_data = rdm_data()$residents
+    )
+    
+    return(dashboard$spider_plot)
+    
+  }, error = function(e) {
+    message("Error rendering self plot: ", e$message)
+    return(plotly::plotly_empty() %>%
+             plotly::add_annotations(
+               text = "No data available",
+               x = 0.5, y = 0.5, showarrow = FALSE,
+               font = list(size = 14, color = "orange")
+             ))
+  })
 })
 
 # Render previous ACGME plot (PLOTLY)
@@ -299,57 +279,36 @@ output$prev_acgme_plot <- plotly::renderPlotly({
   
   prev_period <- previous_period()
   
-  # Debug inside the reactive context
-  message("=== ACGME SPIDER PLOT DEBUG ===")
-  message("resident_id: ", record_id())
-  message("period_text: ", prev_period)
-  message("Data rows for this resident: ", 
-          nrow(acgme_milestone_data()$data %>% dplyr::filter(record_id == !!record_id())))
-  
-  if (!is.na(prev_period)) {
-    message("Data for this period: ",
-            nrow(acgme_milestone_data()$data %>% 
-                 dplyr::filter(record_id == !!record_id(), period_name == prev_period)))
-  }
-  
   if (is.na(prev_period)) {
-    # Empty plotly for no previous period
-    plotly::plot_ly() %>%
-      plotly::add_annotations(
-        text = "No previous assessment period",
-        x = 0.5, y = 0.5,
-        showarrow = FALSE,
-        font = list(size = 16, color = "gray")
-      ) %>%
-      plotly::layout(
-        xaxis = list(visible = FALSE),
-        yaxis = list(visible = FALSE)
-      )
-  } else {
-    tryCatch({
-      gmed::create_enhanced_milestone_spider_plot(
-        milestone_data = acgme_milestone_data()$data,
-        median_data = acgme_milestone_data()$medians,
-        resident_id = record_id(),
-        period_text = prev_period,
-        milestone_type = "acgme",
-        resident_data = rdm_data()$residents
-      )
-    }, error = function(e) {
-      message("Error rendering ACGME plot: ", e$message)
-      plotly::plot_ly() %>%
-        plotly::add_annotations(
-          text = "No data available",
-          x = 0.5, y = 0.5,
-          showarrow = FALSE,
-          font = list(size = 14, color = "orange")
-        ) %>%
-        plotly::layout(
-          xaxis = list(visible = FALSE),
-          yaxis = list(visible = FALSE)
-        )
-    })
+    return(plotly::plotly_empty() %>%
+             plotly::add_annotations(
+               text = "No previous assessment period",
+               x = 0.5, y = 0.5, showarrow = FALSE,
+               font = list(size = 16, color = "gray")
+             ))
   }
+  
+  tryCatch({
+    dashboard <- gmed::create_milestone_overview_dashboard(
+      milestone_results = milestone_results(),
+      resident_id = record_id(),
+      period_text = prev_period,
+      milestone_type = "program",      # Program = CCC assessment
+      milestone_system = "acgme",       # ACGME system
+      resident_data = rdm_data()$residents
+    )
+    
+    return(dashboard$spider_plot)
+    
+  }, error = function(e) {
+    message("Error rendering ACGME plot: ", e$message)
+    return(plotly::plotly_empty() %>%
+             plotly::add_annotations(
+               text = "No data available",
+               x = 0.5, y = 0.5, showarrow = FALSE,
+               font = list(size = 14, color = "orange")
+             ))
+  })
 })
     
     # ========================================================================
