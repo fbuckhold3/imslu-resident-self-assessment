@@ -75,6 +75,17 @@ active_period <- reactive({
       is_override = TRUE
     ))
   }
+
+    # ILP data reactive - extract from complete data structure
+  ilp_data <- reactive({
+    req(values$app_data)
+    
+    if ("ilp" %in% names(values$app_data$all_forms)) {
+      values$app_data$all_forms$ilp
+    } else {
+      NULL
+    }
+  })
   
   # Use automatic detection
   resident_info <- values$app_data$residents %>%

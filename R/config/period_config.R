@@ -248,3 +248,73 @@ get_module_server_function <- function(module_id) {
   
   module_map[module_id]
 }
+
+# ============================================================================
+# GOAL/ILP HELPER FUNCTIONS
+# ============================================================================
+
+#' Load Previous Goals from ILP Data
+#'
+#' @param ilp_data ILP data from REDCap
+#' @param record_id Resident record ID
+#' @param current_period Period name to look back from
+#' @return Data frame row with previous goals, or NULL
+#' @export
+load_previous_goals <- function(ilp_data, record_id, current_period) {
+  
+  # Period sequence
+  period_sequence <- c(
+    "Entering Residency" = NA,
+    "Mid Intern" = "Entering Residency",
+    "End Intern" = "Mid Intern",
+    "Mid PGY2" = "End Intern",
+    "End PGY2" = "Mid PGY2",
+    "Mid PGY3" = "End PGY2",
+    "Graduating" = "Mid PGY3"
+  )
+  
+  previous_period <- period_sequence[current_period]
+  
+  if (is.na(previous_period)) {
+    return(NULL)
+  }
+  
+  # Convert period name to number
+  prev_period_num <- gmed::get_ccc_session(previous_period)
+  
+  prev_data <- ilp_data %>%
+    dplyr::filter(record_id == !!record_id,
+                  year_resident == prev_period_num)
+  
+  if (nrow(prev_data) == 0) {
+    return(NULL)
+  }
+  
+  return(prev_data[1, ])
+}
+
+
+#' Get Previous Period Name
+#'
+#' @param current_period Current period name
+#' @return Previous period name, or NA if none exists
+#' @export
+get_previous_period <- function(current_period) {
+  period_sequence <- c(
+    "Entering Residency" = NA,
+    "Mid Intern" = "Entering Residency",
+    "End Intern" = "Mid Intern",
+    "Mid PGY2" = "End Intern",
+    "End PGY2" = "Mid PGY2",
+    "Mid PGY3" = "End PGY2",
+    "Graduating" = "Mid PGY3"
+  )
+  
+  previous_period <- period_sequence[current_period]
+  
+  if (is.null(previous_period)) {
+    return(NA_character_)
+  }
+  
+  return(previous_period)
+}

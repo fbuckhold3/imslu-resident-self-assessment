@@ -51,8 +51,8 @@ get_module_functions <- function(module_id, data_dict = NULL) {
       icon = "tasks"
     ),
     ilp_generation = list(
-      ui = "mod_ilp_builder_ui",
-      server = "mod_ilp_builder_server",
+      ui = "mod_goals_wrapper_ui",      # CHANGE THIS
+      server = "mod_goals_wrapper_server",  # CHANGE THIS
       title = "Individualized Learning Plan",
       icon = "bullseye"
     ),
