@@ -70,12 +70,14 @@ goalSettingUI <- function(id) {
 #' @param id Module namespace
 #' @param rdm_dict_data Data dictionary
 #' @param subcompetency_maps List of subcompetency mappings
+#' @param competency_list Vector of competency domain codes for ordering
 #' @param milestone_levels List of milestone level descriptions
 #' @param current_milestone_data Reactive with current milestone self-assessment
 #' @param resident_info Reactive with resident name
 #' @param selected_period Reactive with period name
 #' @export
 goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps, 
+                              competency_list,  # ADD THIS PARAMETER
                               milestone_levels, current_milestone_data, 
                               resident_info, selected_period) {
   moduleServer(id, function(input, output, session) {

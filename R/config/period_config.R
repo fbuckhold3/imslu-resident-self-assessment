@@ -262,7 +262,18 @@ get_module_server_function <- function(module_id) {
 #' @export
 load_previous_goals <- function(ilp_data, record_id, current_period) {
   
-  # Period sequence
+  # Period name to number mapping
+  period_to_number <- c(
+    "Entering Residency" = 0,
+    "Mid Intern" = 1,
+    "End Intern" = 2,
+    "Mid PGY2" = 3,
+    "End PGY2" = 4,
+    "Mid PGY3" = 5,
+    "Graduating" = 6
+  )
+  
+  # Period sequence (which period comes before)
   period_sequence <- c(
     "Entering Residency" = NA,
     "Mid Intern" = "Entering Residency",
@@ -273,24 +284,33 @@ load_previous_goals <- function(ilp_data, record_id, current_period) {
     "Graduating" = "Mid PGY3"
   )
   
+  # Get previous period name
   previous_period <- period_sequence[current_period]
   
   if (is.na(previous_period)) {
     return(NULL)
   }
   
-  # Convert period name to number
-  prev_period_num <- gmed::get_ccc_session(previous_period)
+  # Convert to number
+  prev_period_num <- period_to_number[previous_period]
   
-  prev_data <- ilp_data %>%
-    dplyr::filter(record_id == !!record_id,
-                  year_resident == prev_period_num)
-  
-  if (nrow(prev_data) == 0) {
+  if (is.na(prev_period_num)) {
     return(NULL)
   }
   
-  return(prev_data[1, ])
+  # Look up in ILP data
+  prev_data <- ilp_data %>%
+    dplyr::filter(
+      record_id == !!record_id,
+      redcap_repeat_instance == prev_period_num
+    ) %>%
+    dplyr::slice(1)
+  
+  if (nrow(prev_data) > 0) {
+    return(prev_data)
+  } else {
+    return(NULL)
+  }
 }
 
 

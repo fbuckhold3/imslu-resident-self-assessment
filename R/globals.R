@@ -32,7 +32,8 @@ app_config <- list(
   rdm_token = Sys.getenv("RDM_TOKEN"),
   fac_token = Sys.getenv("FAC_TOKEN", unset = NA),
   redcap_url = "https://redcapsurvey.slu.edu/api/",
-  debug_mode = Sys.getenv("DEBUG_MODE", "true") == "true"
+  debug_mode = Sys.getenv("DEBUG_MODE", "true") == "true",
+  use_fake_milestone_data = Sys.getenv("USE_FAKE_MILESTONES", "true") == "true"  # ADD THIS
 )
 
 # Validate token

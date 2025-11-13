@@ -259,101 +259,106 @@ active_period <- reactive({
   current_module_index <- reactiveVal(1)
   
   output$portfolio_content <- renderUI({
-    req(values$authenticated, active_period())
-    
-    period_info <- active_period()
-    config <- get_period_structure(period_info$period_number)
-    modules <- config$modules
-    module_titles <- config$module_titles
-    
-    current_index <- current_module_index()
-    module_key <- modules[current_index]
-    
-    div(
-      class = "container py-4",
-      div(
-        class = "row",
-        div(
-          class = "col-lg-10 offset-lg-1",
-          
-          # Page header
-          h2(module_titles[[module_key]]),
-          p(class = "lead text-muted mb-4", 
-            paste("Period", period_info$period_number, "-", period_info$period_name)),
-          hr(),
-          
-          # Module content
-          uiOutput(paste0("module_", module_key)),
-          
-          # Navigation buttons
-          div(
-            class = "d-flex justify-content-between mt-4 pt-3 border-top",
-            
-            if (current_index > 1) {
-              actionButton(
-                "nav_prev_module",
-                "Previous",
-                class = "btn-outline-secondary",
-                icon = icon("arrow-left")
-              )
-            } else {
-              actionButton(
-                "nav_back_to_intro",
-                "Back to Introduction",
-                class = "btn-outline-secondary",
-                icon = icon("arrow-left")
-              )
-            },
-            
-            if (current_index < length(modules)) {
-              actionButton(
-                "nav_next_module",
-                paste("Continue to", module_titles[[modules[current_index + 1]]]),
-                class = "btn-primary",
-                icon = icon("arrow-right")
-              )
-            } else {
-              actionButton(
-                "nav_complete",
-                "Complete Portfolio Review",
-                class = "btn-success btn-lg",
-                icon = icon("check")
-              )
-            }
-          )
-        )
-      )
-    )
-  })
+  req(values$authenticated, active_period())
   
-  # Progress indicator
-  output$progress_indicator <- renderUI({
-    req(values$authenticated, active_period())
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  module_titles <- config$module_titles
+  
+  current_index <- current_module_index()
+  module_key <- modules[current_index]
+  
+  div(
+    # Module content
+    uiOutput(paste0("module_", module_key)),
     
-    period_info <- active_period()
-    config <- get_period_structure(period_info$period_number)
-    modules <- config$modules
-    
-    current_index <- current_module_index()
-    total <- length(modules)
-    
+    # Navigation buttons
     div(
-      style = "min-width: 200px; padding: 8px;",
-      tags$small(
-        class = "text-muted me-2",
-        sprintf("Step %d of %d", current_index, total)
-      ),
-      tags$div(
-        class = "progress",
-        style = "height: 8px;",
-        tags$div(
-          class = "progress-bar bg-primary",
-          role = "progressbar",
-          style = paste0("width: ", round((current_index / total) * 100), "%;")
+      class = "d-flex justify-content-between mt-5 pt-4 border-top",
+      
+      if (current_index > 1) {
+        actionButton(
+          "nav_prev_module",
+          "Previous",
+          class = "btn-outline-secondary",
+          icon = icon("arrow-left")
+        )
+      } else {
+        div()
+      },
+      
+      if (current_index < length(modules)) {
+        actionButton(
+          "nav_next_module",
+          "Next",
+          class = "btn-primary",
+          icon = icon("arrow-right")
+        )
+      } else {
+        actionButton(
+          "nav_complete",
+          "Complete",
+          class = "btn-success",
+          icon = icon("check")
+        )
+      }
+    )
+  )
+})
+  
+  # ============================================================================
+# PROGRESS STEPPER
+# ============================================================================
+
+output$progress_stepper <- renderUI({
+  req(values$authenticated, active_period())
+  
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  module_titles <- config$module_titles
+  
+  current_index <- current_module_index()
+  
+  # Just the stepper HTML (CSS is now in ui.R)
+  div(
+    class = "stepper-container",
+    lapply(seq_along(modules), function(i) {
+      module_key <- modules[i]
+      module_title <- module_titles[[module_key]]
+      
+      # Determine state
+      is_active <- i == current_index
+      is_completed <- i < current_index
+      is_incomplete <- i > current_index
+      
+      circle_class <- if (is_active) "active" else if (is_completed) "completed" else "incomplete"
+      label_class <- if (is_active) "active" else ""
+      line_class <- if (is_completed) "completed" else ""
+      
+      div(
+        class = "stepper-item",
+        onclick = paste0("Shiny.setInputValue('stepper_nav_", i, "', Math.random())"),
+        
+        # Connection line
+        div(class = paste("stepper-line", line_class)),
+        
+        # Circle with number or checkmark
+        div(
+          class = paste("stepper-circle", circle_class),
+          if (is_completed) icon("check") else as.character(i)
+        ),
+        
+        # Label
+        div(
+          class = paste("stepper-label", label_class),
+          module_title
         )
       )
-    )
-  })
+    })
+  )
+})
   
   # ============================================================================
   # RENDER MODULE UIs DYNAMICALLY
@@ -383,11 +388,7 @@ active_period <- reactive({
     })
   })
   
-  # ============================================================================
-  # INITIALIZE MODULE SERVERS
-  # ============================================================================
-  
- # ============================================================================
+# ============================================================================
 # INITIALIZE MODULE SERVERS
 # ============================================================================
 
@@ -398,12 +399,17 @@ observe({
   config <- get_period_structure(period_info$period_number)
   modules <- config$modules
   
+  # Storage for module outputs
+  if (is.null(values$module_outputs)) {
+    values$module_outputs <- reactiveValues()
+  }
+  
   # Initialize server for each module
   lapply(modules, function(module_key) {
     
     switch(module_key,
       "scholarship" = {
-        mod_scholarship_wrapper_server(
+        values$module_outputs[[module_key]] <- mod_scholarship_wrapper_server(
           paste0("wrapper_", module_key),
           rdm_data = reactive(values$app_data$all_forms$scholarship),
           record_id = reactive(values$current_resident),
@@ -412,7 +418,7 @@ observe({
         )
       },
       "career_planning" = {
-        mod_career_planning_wrapper_server(
+        values$module_outputs[[module_key]] <- mod_career_planning_wrapper_server(
           paste0("wrapper_", module_key),
           rdm_data = reactive(values$app_data$all_forms$s_eval),
           record_id = reactive(values$current_resident),
@@ -421,7 +427,7 @@ observe({
         )
       },
       "program_feedback" = {
-        mod_program_feedback_server(
+        values$module_outputs[[module_key]] <- mod_program_feedback_server(
           paste0("wrapper_", module_key),
           rdm_data = reactive(values$app_data),
           record_id = reactive(values$current_resident),
@@ -430,7 +436,7 @@ observe({
         )
       },
       "assessment_review" = {
-        mod_assessment_wrapper_server(
+        values$module_outputs[[module_key]] <- mod_assessment_wrapper_server(
           paste0("wrapper_", module_key),
           rdm_data = reactive(values$app_data),
           record_id = reactive(values$current_resident),
@@ -439,7 +445,7 @@ observe({
         )
       },
       "learning" = {
-        mod_learning_server(
+        values$module_outputs[[module_key]] <- mod_learning_server(
           paste0("wrapper_", module_key),
           rdm_data = reactive(values$app_data),
           record_id = reactive(values$current_resident),
@@ -448,25 +454,36 @@ observe({
         )
       },
       "milestone_self_eval" = {
-        mod_milestone_entry_server(
+        values$module_outputs[[module_key]] <- mod_milestone_entry_server(
           paste0("wrapper_", module_key),
           rdm_data = reactive(values$app_data),
           record_id = reactive(values$current_resident),
           period = reactive(period_info$period_name)
         )
+      },
+      "ilp_generation" = {
+        values$module_outputs[[module_key]] <- mod_goals_wrapper_server(
+          paste0("wrapper_", module_key),
+          rdm_data = reactive(values$app_data),
+          record_id = reactive(values$current_resident),
+          period = reactive(period_info$period_number),
+          data_dict = values$app_data$data_dict,
+          milestone_output = reactive({
+            if (!is.null(values$module_outputs$milestone_self_eval)) {
+              values$module_outputs$milestone_self_eval
+            } else {
+              NULL
+            }
+          })
+        )
       }
     )
-  })  # <-- ADD THIS: Close the lapply
-})    # <-- ADD THIS: Close the observe
-
+  })
+})
 # ============================================================================
 # NAVIGATION EVENT HANDLERS
 # ============================================================================
-  
-  # ============================================================================
-  # NAVIGATION EVENT HANDLERS
-  # ============================================================================
-  
+
   # Navigate from intro to first module
   observeEvent(input$nav_intro_next, {
     req(active_period())

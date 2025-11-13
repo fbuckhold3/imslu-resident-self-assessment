@@ -21,7 +21,8 @@ mod_goals_wrapper_ui <- function(id) {
 
 #' Goals Wrapper Server
 #' @export
-mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict) {
+mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict, 
+                                     milestone_output = NULL) {
   moduleServer(id, function(input, output, session) {
     
     # Extract ILP data
@@ -61,12 +62,75 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict)
       }
     })
     
-    # Get current milestone data (from milestone module if it exists)
-    current_milestone_data <- reactive({
-      # This should come from the milestone module's output
-      # For now, return empty data frame
-      data.frame()
-    })
+    # Get current milestone data - HYBRID approach
+# Get current milestone data - HYBRID approach with DEBUG mode
+current_milestone_data <- reactive({
+  
+  # DEBUG MODE: Use fake data for testing
+  if (app_config$use_fake_milestone_data) {
+    message("⚠ DEBUG MODE: Using fake milestone data")
+    
+    # Build fake milestone data that matches what gmed::miles_plot expects
+    # Structure: competency codes (PC1, PC2, MK1, etc.) with levels
+    fake_data <- data.frame(
+      # PC subcompetencies
+      PC1 = 3, PC2 = 3, PC3 = 2, PC4 = 3, PC5 = 2, PC6 = 3,
+      # MK subcompetencies  
+      MK1 = 3, MK2 = 3, MK3 = 2,
+      # SBP subcompetencies
+      SBP1 = 3, SBP2 = 2, SBP3 = 3,
+      # PBLI subcompetencies
+      PBL1 = 3, PBL2 = 2,  # Note: PBLI becomes PBL in field names
+      # PROF subcompetencies
+      PROF1 = 3, PROF2 = 3, PROF3 = 2, PROF4 = 3,
+      # ICS subcompetencies
+      ICS1 = 3, ICS2 = 2, ICS3 = 3,
+      
+      stringsAsFactors = FALSE
+    )
+    
+    # Add record_id if miles_plot expects it
+    fake_data$record_id <- record_id()
+    
+    return(fake_data)
+  }
+  
+  # PRIORITY 1: Use just-entered milestone data from previous module
+  if (!is.null(milestone_output) && is.function(milestone_output)) {
+    milestone_mod <- milestone_output()
+    
+    # Check if module has current_data
+    if (!is.null(milestone_mod) && "current_data" %in% names(milestone_mod)) {
+      fresh_data <- milestone_mod$current_data()  # Call the reactive
+      
+      if (!is.null(fresh_data) && is.data.frame(fresh_data) && nrow(fresh_data) > 0) {
+        message("✓ Using fresh milestone data from current session")
+        return(fresh_data)
+      }
+    }
+  }
+  
+  # PRIORITY 2: Use milestone workflow from rdm_data (saved data)
+  req(rdm_data(), record_id())
+  app_data <- rdm_data()
+  
+  if (!is.null(app_data$milestone_workflow) && is.data.frame(app_data$milestone_workflow)) {
+    workflow <- app_data$milestone_workflow
+    
+    # Filter to current resident
+    resident_data <- workflow %>%
+      dplyr::filter(record_id == !!record_id())
+    
+    if (nrow(resident_data) > 0) {
+      message("✓ Using milestone data from REDCap")
+      return(resident_data)
+    }
+  }
+  
+  # FALLBACK: Return empty data frame (not NULL)
+  message("⚠ No milestone data available - returning empty data frame")
+  data.frame()
+})
     
     # Subcompetency maps
     subcompetency_maps <- list(
@@ -127,7 +191,7 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict)
       current_milestone_data = current_milestone_data,
       resident_info = resident_info,
       selected_period = reactive({
-        period_config <- gmed::get_period_structure(period_info())
+        period_config <- get_period_structure(period_info())
         period_config$period_name
       })
     )
@@ -136,7 +200,7 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict)
     observe({
       req(ilp_data(), record_id())
       
-      period_config <- gmed::get_period_structure(period_info())
+      period_config <- get_period_structure(period_info())
       prev_period <- get_previous_period(period_config$period_name)
       
       if (!is.na(prev_period)) {
@@ -174,7 +238,7 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict)
       goals_mod$reset_submission()
       
       if (result$success) {
-        showNotification("✅ ILP goals submitted successfully!", type = "message", duration = 5)
+        showNotification("✓ ILP goals submitted successfully!", type = "message", duration = 5)
       } else {
         showNotification(paste("Error:", result$message), type = "error", duration = 10)
       }
