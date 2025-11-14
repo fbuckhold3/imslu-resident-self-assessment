@@ -228,6 +228,18 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         return(NULL)
       }
 
+      # Ensure we have exactly 1 row for the spider plot
+      # If multiple rows exist, take the most recent one
+      if (nrow(resident_data) > 1) {
+        if ("redcap_repeat_instance" %in% names(resident_data)) {
+          resident_data <- resident_data %>%
+            dplyr::arrange(dplyr::desc(redcap_repeat_instance)) %>%
+            dplyr::slice(1)
+        } else {
+          resident_data <- resident_data %>% dplyr::slice(1)
+        }
+      }
+
       message("=== SPIDER PLOT DATA ===")
       message("Resident data rows after filtering: ", nrow(resident_data))
       message("Milestone columns: ", length(milestone_cols))
