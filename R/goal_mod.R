@@ -249,9 +249,15 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
     
     # Helper: Create spider plot
     create_spider_plot <- function(scores, medians = NULL, col_names) {
-      # Get labels
+      # Get labels - handle both rep_ and acgme_ prefixes
       labels <- sapply(col_names, function(x) {
-        gsub("_self$", "", gsub("^rep_", "", toupper(x)))
+        # Remove common prefixes and suffixes
+        label <- toupper(x)
+        label <- gsub("^REP_", "", label)
+        label <- gsub("^ACGME_", "", label)
+        label <- gsub("_SELF$", "", label)
+        label <- gsub("_PROGRAM$", "", label)
+        return(label)
       })
       
       # Plot setup

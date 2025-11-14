@@ -132,11 +132,27 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
               if (nrow(prev_data) > 0) {
                 message("Using ACGME milestones from period ", prev_period)
                 message("  Data rows: ", nrow(prev_data))
-                message("  Milestone cols: ", length(config$score_columns))
+
+                # Get milestone columns - try different field names
+                milestone_cols <- config$score_columns
+                if (is.null(milestone_cols) || length(milestone_cols) == 0) {
+                  # Try alternative field names
+                  milestone_cols <- config$milestone_cols
+                }
+                if (is.null(milestone_cols) || length(milestone_cols) == 0) {
+                  # Extract from data directly
+                  milestone_cols <- grep("^acgme_(pc|mk|sbp|pbl|prof|ics)\\d+$",
+                                        names(prev_data), value = TRUE)
+                }
+
+                message("  Milestone cols: ", length(milestone_cols))
+                if (length(milestone_cols) > 0) {
+                  message("  Sample cols: ", paste(head(milestone_cols, 3), collapse = ", "))
+                }
 
                 return(list(
                   data = prev_data,
-                  milestone_cols = config$score_columns,
+                  milestone_cols = milestone_cols,
                   medians = config$medians
                 ))
               }
@@ -177,20 +193,17 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
                             "3" = "Developing", "4" = "Competent", "5" = "Advanced")
     
     # Initialize goal setting module
-goals_mod <- goalSettingServer(
-  "entry",
-  rdm_dict_data = reactive({
-    req(data_dict())
-    data_dict()
-  }),
-  subcompetency_maps = subcompetency_maps,
-  competency_list = competency_list,
-  milestone_levels = milestone_levels,
-  current_milestone_data = current_milestone_data,
-  resident_info = resident_info,
-  selected_period = reactive(period_info()),
-  ilp_data = ilp_data
-)
-return(goals_mod)  # ADD THIS LINE
+    goals_mod <- goalSettingServer(
+      "entry",
+      rdm_dict_data = data_dict,  # Pass through directly, it's already available
+      subcompetency_maps = subcompetency_maps,
+      competency_list = competency_list,
+      milestone_levels = milestone_levels,
+      current_milestone_data = current_milestone_data,
+      resident_info = resident_info,
+      selected_period = reactive(period_info()),
+      ilp_data = ilp_data
+    )
+    return(goals_mod)
   })
 }
