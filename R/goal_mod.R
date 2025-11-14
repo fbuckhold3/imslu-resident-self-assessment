@@ -294,16 +294,22 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       }
 
       # Ensure 'name' column exists for gmed function (it tries to pull this)
-      if (!"name" %in% names(resident_data) || is.na(resident_data$name[1]) || resident_data$name[1] == "") {
-        resident_data$name <- paste("Resident", rec_id)
-        message("Added/fixed name column: ", resident_data$name[1])
+      # Use actual name from data if available, otherwise use "Resident {record_id}"
+      resident_name <- paste("Resident", rec_id)
+
+      if ("name" %in% names(resident_data) && !is.na(resident_data$name[1]) && resident_data$name[1] != "") {
+        resident_name <- resident_data$name[1]
+        message("Using resident name from data: ", resident_name)
+      } else {
+        resident_data$name <- resident_name
+        message("Added fallback name column: ", resident_name)
       }
 
       # Create resident lookup data frame using record_id
       # gmed function expects 'record_id' and 'name' columns
       resident_lookup <- data.frame(
         record_id = rec_id,
-        name = paste("Resident", rec_id),
+        name = resident_name,
         stringsAsFactors = FALSE
       )
 
