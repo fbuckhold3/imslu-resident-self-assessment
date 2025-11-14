@@ -54,21 +54,99 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
     current_milestone_data <- reactive({
       req(rdm_data())
       app_data <- rdm_data()
-      
+
       message("=== GOAL MODULE: Getting Milestone Data ===")
-      
-      # Check for milestone_workflow
+
+      # PRIORITY 1: Check if milestone_output from this session exists
+      if (!is.null(milestone_output) && is.function(milestone_output)) {
+        session_milestone <- tryCatch(milestone_output(), error = function(e) NULL)
+
+        if (!is.null(session_milestone) && !is.null(session_milestone$scores)) {
+          message("Using milestone data from THIS SESSION'S self-assessment")
+
+          # Convert scores to data format expected by spider plot
+          # scores() returns a named list like: list(PC1 = 5, PC2 = 3, ...)
+          scores_data <- session_milestone$scores()
+
+          if (!is.null(scores_data) && length(scores_data) > 0) {
+            # Build a single-row data frame with current resident's scores
+            resident_row <- data.frame(
+              record_id = record_id(),
+              period_name = period(),
+              stringsAsFactors = FALSE
+            )
+
+            # Add milestone scores with proper field naming (rep_pc1_self, etc.)
+            for (milestone_name in names(scores_data)) {
+              field_name <- paste0("rep_", tolower(milestone_name), "_self")
+              resident_row[[field_name]] <- as.numeric(scores_data[[milestone_name]])
+            }
+
+            milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$",
+                                  names(resident_row), value = TRUE)
+
+            message("  Created data from session scores")
+            message("  Milestone cols: ", length(milestone_cols))
+
+            return(list(
+              data = resident_row,
+              milestone_cols = milestone_cols,
+              medians = NULL
+            ))
+          }
+        }
+      }
+
+      # PRIORITY 2: Use PREVIOUS period's ACGME milestone data
+      message("No session milestone data - looking for PREVIOUS period ACGME data")
+
+      # Calculate previous period
+      current_period <- if (is.function(period)) period() else period
+      prev_period <- current_period - 1
+
+      if (prev_period >= 1 && !is.null(app_data$milestone_workflow)) {
+        message("Looking for ACGME milestones from period ", prev_period)
+
+        # Look for ACGME configuration
+        for (config_name in names(app_data$milestone_workflow)) {
+          if (grepl("acgme", config_name, ignore.case = TRUE)) {
+            config <- app_data$milestone_workflow[[config_name]]
+
+            if (!is.null(config$data) && nrow(config$data) > 0) {
+              # Filter for this resident and previous period
+              prev_data <- config$data %>%
+                dplyr::filter(
+                  record_id == !!record_id(),
+                  prog_mile_period == !!prev_period
+                )
+
+              if (nrow(prev_data) > 0) {
+                message("Using ACGME milestones from period ", prev_period)
+                message("  Data rows: ", nrow(prev_data))
+                message("  Milestone cols: ", length(config$score_columns))
+
+                return(list(
+                  data = prev_data,
+                  milestone_cols = config$score_columns,
+                  medians = config$medians
+                ))
+              }
+            }
+          }
+        }
+      }
+
+      # FALLBACK: Try self-assessment workflow data
       if (!is.null(app_data$milestone_workflow)) {
-        # Look for self configuration
         for (config_name in names(app_data$milestone_workflow)) {
           if (grepl("self", config_name, ignore.case = TRUE)) {
             config <- app_data$milestone_workflow[[config_name]]
-            
+
             if (!is.null(config$data) && nrow(config$data) > 0) {
-              message("Using milestone config: ", config_name)
+              message("Using milestone config (fallback): ", config_name)
               message("  Data rows: ", nrow(config$data))
               message("  Milestone cols: ", length(config$score_columns))
-              
+
               return(list(
                 data = config$data,
                 milestone_cols = config$score_columns,
@@ -78,24 +156,7 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
           }
         }
       }
-      
-      # Fallback: direct form access
-      if ("milestone_selfevaluation_c33c" %in% names(app_data$all_forms)) {
-        self_data <- app_data$all_forms$milestone_selfevaluation_c33c
-        milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$", 
-                              names(self_data), value = TRUE)
-        
-        message("Using direct form access")
-        message("  Data rows: ", nrow(self_data))
-        message("  Milestone cols: ", length(milestone_cols))
-        
-        return(list(
-          data = self_data,
-          milestone_cols = milestone_cols,
-          medians = NULL
-        ))
-      }
-      
+
       message("No milestone data found")
       return(list(data = data.frame(), milestone_cols = character(0), medians = NULL))
     })
