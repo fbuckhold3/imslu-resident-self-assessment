@@ -255,13 +255,21 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
 
       message("Using milestone type: ", milestone_type)
 
-      # Create resident lookup data frame
-      resident_lookup <- data.frame(
-        record_id = rec_id,
-        name_first = res_info$name,
-        name_last = "",
-        stringsAsFactors = FALSE
-      )
+      # Create resident lookup data frame if name is available
+      resident_lookup <- NULL
+      if (!is.null(res_info$name) && length(res_info$name) > 0 && res_info$name != "") {
+        resident_lookup <- tryCatch({
+          data.frame(
+            record_id = rec_id,
+            name_first = res_info$name,
+            name_last = "",
+            stringsAsFactors = FALSE
+          )
+        }, error = function(e) {
+          message("Could not create resident lookup: ", e$message)
+          return(NULL)
+        })
+      }
 
       # Call gmed enhanced spider plot function
       tryCatch({
