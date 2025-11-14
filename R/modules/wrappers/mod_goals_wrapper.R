@@ -123,10 +123,17 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
 
             if (!is.null(config$data) && nrow(config$data) > 0) {
               # Filter for this resident and previous period
+              # ACGME uses acgme_mile_period, not prog_mile_period
+              period_field <- if ("acgme_mile_period" %in% names(config$data)) {
+                "acgme_mile_period"
+              } else {
+                "prog_mile_period"
+              }
+
               prev_data <- config$data %>%
                 dplyr::filter(
                   record_id == !!record_id(),
-                  prog_mile_period == !!prev_period
+                  !!rlang::sym(period_field) == !!prev_period
                 )
 
               if (nrow(prev_data) > 0) {

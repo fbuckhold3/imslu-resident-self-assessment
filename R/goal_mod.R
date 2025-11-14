@@ -184,27 +184,40 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       # Get current period name
       current_period <- period_name()
 
-      # Filter for this resident and period
-      # Try multiple period field names (period_name for string, prog_mile_period for number)
+      # Filter for this resident
       resident_data <- ms_data$data %>%
         dplyr::filter(record_id == !!rec_id)
 
-      # Filter by period if period_name column exists
-      if ("period_name" %in% names(resident_data)) {
-        resident_data <- resident_data %>%
-          dplyr::filter(period_name == !!current_period)
+      # If data is already pre-filtered (small number of rows), skip period filtering
+      # This happens when wrapper provides ACGME data from previous period
+      if (nrow(resident_data) > 10) {
+        # Filter by period if period_name column exists
+        if ("period_name" %in% names(resident_data)) {
+          resident_data <- resident_data %>%
+            dplyr::filter(period_name == !!current_period)
+        }
       }
 
-      # If no data, try filtering by prog_mile_period (for ACGME data)
-      if (nrow(resident_data) == 0 && "prog_mile_period" %in% names(ms_data$data)) {
-        # Extract period number from period name
-        period_num <- extract_period_number(current_period)
-        if (!is.na(period_num)) {
-          resident_data <- ms_data$data %>%
-            dplyr::filter(
-              record_id == !!rec_id,
-              prog_mile_period == !!period_num
-            )
+      # If no data, try filtering by period number field
+      # Check for both prog_mile_period and acgme_mile_period
+      if (nrow(resident_data) == 0) {
+        period_field <- NULL
+        if ("prog_mile_period" %in% names(ms_data$data)) {
+          period_field <- "prog_mile_period"
+        } else if ("acgme_mile_period" %in% names(ms_data$data)) {
+          period_field <- "acgme_mile_period"
+        }
+
+        if (!is.null(period_field)) {
+          # Extract period number from period name
+          period_num <- extract_period_number(current_period)
+          if (!is.na(period_num)) {
+            resident_data <- ms_data$data %>%
+              dplyr::filter(
+                record_id == !!rec_id,
+                !!rlang::sym(period_field) == !!period_num
+              )
+          }
         }
       }
 
@@ -476,15 +489,11 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
     # Helper: new goal UI
     new_goal_ui <- function(ns, domain) {
       choices <- get_subcomp_choices(domain)
-      
+
       tagList(
         selectInput(ns(paste0("subcomp_", domain)),
                    "Select Subcompetency:",
                    choices = choices,
-                   width = "100%"),
-        selectInput(ns(paste0("target_level_", domain)),
-                   "Target Level:",
-                   choices = setNames(1:5, paste("Level", 1:5)),
                    width = "100%"),
         textAreaInput(ns(paste0("how_", domain)),
                      "How will you achieve this goal?",
