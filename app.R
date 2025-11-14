@@ -22,3 +22,8 @@ shinyApp(ui = ui, server = server)
 #VzvHJY - record_id 99
 #PkWIkr - record_id 94
 
+app_data <- complete_data
+
+dict <- app_data$data_dict
+pc2_fields <- dict %>% filter(grepl("^pc2_r", field_name))
+pc2_fields %>% select(field_name, field_label, select_choices_or_calculations) %>% head(3)
