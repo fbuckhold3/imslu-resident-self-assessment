@@ -245,17 +245,6 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       message("Milestone columns: ", length(milestone_cols))
       message("Sample milestone cols: ", paste(head(milestone_cols, 3), collapse = ", "))
 
-      # Get median data if available
-      median_data <- NULL
-      if (!is.null(ms_data$medians) && nrow(ms_data$medians) > 0) {
-        median_data <- ms_data$medians %>%
-          dplyr::filter(period_name == !!current_period)
-
-        if (nrow(median_data) == 0) {
-          median_data <- NULL
-        }
-      }
-
       # Detect milestone type from column names
       milestone_type <- if (any(grepl("^acgme_", milestone_cols))) {
         "acgme"
@@ -291,6 +280,23 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
           resident_data$period_name <- plot_period_text
           message("Converted period ", period_num, " to name: ", plot_period_text)
         }
+      }
+
+      # Get median data if available - filter by the ACTUAL period of the data
+      median_data <- NULL
+      if (!is.null(ms_data$medians) && nrow(ms_data$medians) > 0) {
+        message("Filtering medians for period: ", plot_period_text)
+        median_data <- ms_data$medians %>%
+          dplyr::filter(period_name == !!plot_period_text)
+
+        if (nrow(median_data) == 0) {
+          message("No median data found for period: ", plot_period_text)
+          median_data <- NULL
+        } else {
+          message("Found median data: ", nrow(median_data), " row(s)")
+        }
+      } else {
+        message("No median data available in milestone workflow")
       }
 
       # Ensure 'name' column exists for gmed function (it tries to pull this)
