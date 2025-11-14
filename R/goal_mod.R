@@ -267,6 +267,17 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
 
       message("Using milestone type: ", milestone_type)
 
+      # Debug: Check what columns exist in resident_data
+      message("Resident data columns: ", paste(names(resident_data), collapse = ", "))
+      message("Resident data first row sample:")
+      print(head(resident_data[, 1:min(5, ncol(resident_data))], 1))
+
+      # Check if period_name column exists, if not add it
+      if (!"period_name" %in% names(resident_data)) {
+        resident_data$period_name <- current_period
+        message("Added period_name column: ", current_period)
+      }
+
       # Create resident lookup data frame using record_id
       # record_id is consistent across repeating instances
       resident_lookup <- data.frame(
@@ -288,6 +299,8 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         )
       }, error = function(e) {
         message("Spider plot error: ", e$message)
+        message("Error traceback:")
+        print(e)
         return(NULL)
       })
     })
