@@ -272,10 +272,25 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       message("Resident data first row sample:")
       print(head(resident_data[, 1:min(5, ncol(resident_data))], 1))
 
-      # Check if period_name column exists, if not add it
-      if (!"period_name" %in% names(resident_data)) {
-        resident_data$period_name <- current_period
-        message("Added period_name column: ", current_period)
+      # Determine the correct period_text to pass to gmed
+      # Use the period_name from the data if it exists, otherwise use current_period
+      plot_period_text <- current_period
+
+      if ("period_name" %in% names(resident_data) && !is.na(resident_data$period_name[1])) {
+        # Use the period name from the actual data
+        plot_period_text <- resident_data$period_name[1]
+        message("Using period_name from data: ", plot_period_text)
+      } else if ("prog_mile_period" %in% names(resident_data) || "acgme_mile_period" %in% names(resident_data)) {
+        # Try to get period name from period number
+        period_field <- if ("prog_mile_period" %in% names(resident_data)) "prog_mile_period" else "acgme_mile_period"
+        period_num <- resident_data[[period_field]][1]
+
+        if (!is.na(period_num) && period_num %in% 1:7) {
+          period_config <- get_period_structure(period_num)
+          plot_period_text <- period_config$period_name
+          resident_data$period_name <- plot_period_text
+          message("Converted period ", period_num, " to name: ", plot_period_text)
+        }
       }
 
       # Create resident lookup data frame using record_id
@@ -293,7 +308,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
           milestone_data = resident_data,
           median_data = median_data,
           resident_id = as.character(rec_id),
-          period_text = current_period,
+          period_text = plot_period_text,
           milestone_type = milestone_type,
           resident_data = resident_lookup
         )
