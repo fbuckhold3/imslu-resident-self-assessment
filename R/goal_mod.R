@@ -287,21 +287,15 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       n <- length(scores)
       angles <- seq(0, 2*pi, length.out = n + 1)[1:n]
 
-      # Auto-detect scale: if max score > 5, assume 9-point scale (ACGME)
-      max_scale <- if (max(scores, na.rm = TRUE) > 5) 9 else 5
+      # All milestone scales are 1-9 (self, program, ACGME)
+      max_scale <- 9
 
       plot(0, 0, type = "n", xlim = c(-1.3, 1.3), ylim = c(-1.3, 1.3),
            asp = 1, axes = FALSE, xlab = "", ylab = "",
-           main = paste0("Your Milestone Scores (1-", max_scale, " scale)"))
+           main = "Your Milestone Scores (1-9 scale)")
 
-      # Draw concentric circles based on detected scale
-      if (max_scale == 9) {
-        # For 9-point scale, draw circles at 1, 3, 5, 7, 9
-        levels_to_draw <- c(1, 3, 5, 7, 9)
-      } else {
-        # For 5-point scale, draw all 5 levels
-        levels_to_draw <- 1:5
-      }
+      # Draw concentric circles at 1, 3, 5, 7, 9 for 9-point scale
+      levels_to_draw <- c(1, 3, 5, 7, 9)
 
       for (level in levels_to_draw) {
         r <- level / max_scale
