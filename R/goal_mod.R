@@ -283,51 +283,60 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       
       # Plot setup
       par(mar = c(1, 1, 3, 1))
-      
+
       n <- length(scores)
       angles <- seq(0, 2*pi, length.out = n + 1)[1:n]
-      
+
+      # Auto-detect scale: if max score > 5, assume 9-point scale (ACGME)
+      max_scale <- if (max(scores, na.rm = TRUE) > 5) 9 else 5
+
       plot(0, 0, type = "n", xlim = c(-1.3, 1.3), ylim = c(-1.3, 1.3),
            asp = 1, axes = FALSE, xlab = "", ylab = "",
-           main = "Your Milestone Scores")
-      
-      # Draw concentric circles for levels 1-5
-      for (level in 1:5) {
-        r <- level / 5
+           main = paste0("Your Milestone Scores (1-", max_scale, " scale)"))
+
+      # Draw concentric circles based on detected scale
+      if (max_scale == 9) {
+        # For 9-point scale, draw circles at 1, 3, 5, 7, 9
+        levels_to_draw <- c(1, 3, 5, 7, 9)
+      } else {
+        # For 5-point scale, draw all 5 levels
+        levels_to_draw <- 1:5
+      }
+
+      for (level in levels_to_draw) {
+        r <- level / max_scale
         circle_x <- r * cos(angles)
         circle_y <- r * sin(angles)
-        lines(c(circle_x, circle_x[1]), c(circle_y, circle_y[1]), 
+        lines(c(circle_x, circle_x[1]), c(circle_y, circle_y[1]),
               col = "gray80", lty = 2)
-        
+
         # Add level labels
-        if (level %% 2 == 1) {
-          text(0, -r - 0.05, level, cex = 0.6, col = "gray50")
-        }
+        text(0, -r - 0.05, level, cex = 0.6, col = "gray50")
       }
-      
+
       # Draw radial lines
       for (i in 1:n) {
         lines(c(0, cos(angles[i])), c(0, sin(angles[i])), col = "gray70")
       }
-      
+
       # Plot median scores if available
       if (!is.null(medians)) {
-        valid_medians <- pmax(0, pmin(5, medians, na.rm = TRUE))
+        valid_medians <- pmax(0, pmin(max_scale, medians, na.rm = TRUE))
         valid_medians[is.na(valid_medians)] <- 0
-        r_medians <- valid_medians / 5
+        r_medians <- valid_medians / max_scale
         x_med <- r_medians * cos(angles)
         y_med <- r_medians * sin(angles)
-        
-        polygon(c(x_med, x_med[1]), c(y_med, y_med[1]), 
-                col = rgb(0.7, 0.7, 0.7, 0.2), 
-                border = rgb(0.5, 0.5, 0.5, 0.6), 
+
+        polygon(c(x_med, x_med[1]), c(y_med, y_med[1]),
+                col = rgb(0.7, 0.7, 0.7, 0.2),
+                border = rgb(0.5, 0.5, 0.5, 0.6),
                 lty = 2, lwd = 1.5)
       }
-      
-      # Plot resident scores
-      valid_scores <- pmax(0, pmin(5, scores, na.rm = TRUE))
+
+      # Plot resident scores - raw values normalized to detected scale
+      valid_scores <- pmax(0, pmin(max_scale, scores, na.rm = TRUE))
       valid_scores[is.na(valid_scores)] <- 0
-      r_scores <- valid_scores / 5
+      r_scores <- valid_scores / max_scale
       x <- r_scores * cos(angles)
       y <- r_scores * sin(angles)
       
