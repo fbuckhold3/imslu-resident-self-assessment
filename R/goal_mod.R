@@ -73,7 +73,18 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
                               selected_period, ilp_data = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    
+
+    # Helper: Extract period number from period name
+    extract_period_number <- function(period_name) {
+      period_map <- c(
+        "Mid Intern" = 1, "End Intern" = 2,
+        "Mid PGY2" = 3, "End PGY2" = 4,
+        "Mid PGY3" = 5, "End PGY3" = 6, "Graduating" = 6,
+        "Entering Residency" = 7
+      )
+      as.numeric(period_map[period_name])
+    }
+
     # Track current page
     current_page <- reactiveVal("pcmk")
     
@@ -169,17 +180,34 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       # Get resident info
       res_info <- if (is.function(resident_info)) resident_info() else resident_info
       rec_id <- res_info$record_id
-      
+
       # Get current period name
       current_period <- period_name()
-      
+
       # Filter for this resident and period
+      # Try multiple period field names (period_name for string, prog_mile_period for number)
       resident_data <- ms_data$data %>%
-        dplyr::filter(
-          record_id == !!rec_id,
-          period_name == !!current_period
-        )
-      
+        dplyr::filter(record_id == !!rec_id)
+
+      # Filter by period if period_name column exists
+      if ("period_name" %in% names(resident_data)) {
+        resident_data <- resident_data %>%
+          dplyr::filter(period_name == !!current_period)
+      }
+
+      # If no data, try filtering by prog_mile_period (for ACGME data)
+      if (nrow(resident_data) == 0 && "prog_mile_period" %in% names(ms_data$data)) {
+        # Extract period number from period name
+        period_num <- extract_period_number(current_period)
+        if (!is.na(period_num)) {
+          resident_data <- ms_data$data %>%
+            dplyr::filter(
+              record_id == !!rec_id,
+              prog_mile_period == !!period_num
+            )
+        }
+      }
+
       if (nrow(resident_data) == 0) {
         # Try without period filter (get most recent)
         resident_data <- ms_data$data %>%
