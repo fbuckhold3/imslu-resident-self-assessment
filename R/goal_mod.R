@@ -300,11 +300,10 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       }
 
       # Create resident lookup data frame using record_id
-      # record_id is consistent across repeating instances
+      # gmed function expects 'record_id' and 'name' columns
       resident_lookup <- data.frame(
         record_id = rec_id,
-        name_first = as.character(rec_id),
-        name_last = "",
+        name = paste("Resident", rec_id),
         stringsAsFactors = FALSE
       )
 
