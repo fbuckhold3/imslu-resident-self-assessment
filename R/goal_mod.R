@@ -474,170 +474,170 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       req(input$subcomp_profics)
       render_milestone_table("profics", input$subcomp_profics)
     })
-    
+
     # Helper: render milestone table
-render_milestone_table <- function(domain, selected_subcomp) {
-  # Get the competency code
-  comp_code <- get_comp_code_from_selection(domain, selected_subcomp)
-  
-  if (is.null(comp_code)) {
-    return(div(class = "alert alert-warning", "No milestone data available"))
-  }
-  
-  message("Rendering milestone table for: ", comp_code)
-  
-  # Get milestone table from data dictionary
-  table_data <- get_milestone_table_from_dict(comp_code)
-  
-  if (is.null(table_data) || nrow(table_data) == 0) {
-    return(div(class = "alert alert-warning", 
-               paste("No milestone descriptions found for", comp_code)))
-  }
-  
-  div(class = "milestone-table-container",
-      h5(paste(comp_code, "Milestone Levels"), 
-         style = "color: #0072B2; margin-bottom: 15px;"),
-      div(style = "overflow-x: auto;",
-          tags$table(class = "milestone-table",
-                    tags$thead(
-                      tags$tr(
-                        tags$th("Milestone", style = "width: 100px;"),
-                        tags$th("Level 1: Novice"),
-                        tags$th("Level 2: Advanced Beginner"),
-                        tags$th("Level 3: Competent"),
-                        tags$th("Level 4: Proficient"),
-                        tags$th("Level 5: Expert")
-                      )
-                    ),
-                    tags$tbody(
-                      lapply(1:nrow(table_data), function(i) {
-                        tags$tr(
-                          tags$td(strong(table_data$Row[i])),
-                          tags$td(table_data$Level_1[i]),
-                          tags$td(table_data$Level_2[i]),
-                          tags$td(table_data$Level_3[i]),
-                          tags$td(table_data$Level_4[i]),
-                          tags$td(table_data$Level_5[i])
+    render_milestone_table <- function(domain, selected_subcomp) {
+      # Get the competency code
+      comp_code <- get_comp_code_from_selection(domain, selected_subcomp)
+
+      if (is.null(comp_code)) {
+        return(div(class = "alert alert-warning", "No milestone data available"))
+      }
+
+      message("Rendering milestone table for: ", comp_code)
+
+      # Get milestone table from data dictionary
+      table_data <- get_milestone_table_from_dict(comp_code)
+
+      if (is.null(table_data) || nrow(table_data) == 0) {
+        return(div(class = "alert alert-warning",
+                   paste("No milestone descriptions found for", comp_code)))
+      }
+
+      div(class = "milestone-table-container",
+          h5(paste(comp_code, "Milestone Levels"),
+             style = "color: #0072B2; margin-bottom: 15px;"),
+          div(style = "overflow-x: auto;",
+              tags$table(class = "milestone-table",
+                        tags$thead(
+                          tags$tr(
+                            tags$th("Milestone", style = "width: 100px;"),
+                            tags$th("Level 1: Novice"),
+                            tags$th("Level 2: Advanced Beginner"),
+                            tags$th("Level 3: Competent"),
+                            tags$th("Level 4: Proficient"),
+                            tags$th("Level 5: Expert")
+                          )
+                        ),
+                        tags$tbody(
+                          lapply(1:nrow(table_data), function(i) {
+                            tags$tr(
+                              tags$td(strong(table_data$Row[i])),
+                              tags$td(table_data$Level_1[i]),
+                              tags$td(table_data$Level_2[i]),
+                              tags$td(table_data$Level_3[i]),
+                              tags$td(table_data$Level_4[i]),
+                              tags$td(table_data$Level_5[i])
+                            )
+                          })
                         )
-                      })
-                    )
+              )
+          ),
+          div(style = "margin-top: 15px;",
+              fluidRow(
+                column(6,
+                       selectInput(ns(paste0("milestone_row_", domain)),
+                                  "Select Milestone Row:",
+                                  choices = setNames(1:nrow(table_data), table_data$Row),
+                                  width = "100%")
+                ),
+                column(6,
+                       selectInput(ns(paste0("target_level_", domain)),
+                                  "Target Level:",
+                                  choices = setNames(1:5, c("1: Novice", "2: Advanced Beginner",
+                                                            "3: Competent", "4: Proficient", "5: Expert")),
+                                  width = "100%")
+                )
+              )
+          ),
+          div(class = "alert alert-info", style = "margin-top: 15px;",
+              uiOutput(ns(paste0("selected_milestone_desc_", domain)))
           )
-      ),
-      div(style = "margin-top: 15px;",
-          fluidRow(
-            column(6,
-                   selectInput(ns(paste0("milestone_row_", domain)),
-                              "Select Milestone Row:",
-                              choices = setNames(1:nrow(table_data), table_data$Row),
-                              width = "100%")
-            ),
-            column(6,
-                   selectInput(ns(paste0("target_level_", domain)),
-                              "Target Level:",
-                              choices = setNames(1:5, c("1: Novice", "2: Advanced Beginner", 
-                                                        "3: Competent", "4: Proficient", "5: Expert")),
-                              width = "100%")
-            )
-          )
-      ),
-      div(class = "alert alert-info", style = "margin-top: 15px;",
-          uiOutput(ns(paste0("selected_milestone_desc_", domain)))
       )
-  )
-}
-    
-# Helper: get milestone table from data dictionary
-get_milestone_table_from_dict <- function(comp_code) {
-  dict <- tryCatch({
-    if (is.function(rdm_dict_data)) {
-      rdm_dict_data()
-    } else {
-      rdm_dict_data
     }
-  }, error = function(e) {
-    message("Error getting data dictionary: ", e$message)
-    return(NULL)
-  })
-  
-  if (is.null(dict)) {
-    message("Data dictionary is NULL")
-    return(NULL)
-  }
-  
-  # Parse comp_code (e.g., "PC1" -> domain="PC", num="1")
-  domain <- gsub("\\d+$", "", comp_code)
-  comp_num <- gsub("^[A-Z]+", "", comp_code)
-  
-  # Convert to lowercase for field matching
-  prefix_lower <- tolower(domain)
-  if (domain == "PBLI") prefix_lower <- "pbl"
-  
-  # Find milestone row fields: pc1_r1, pc1_r2, etc.
-  pattern <- paste0("^", prefix_lower, comp_num, "_r\\d+$")
-  
-  message("Looking for pattern: ", pattern, " (comp_code: ", comp_code, ")")
-  
-  # Filter for matching fields
-  fields <- dict %>%
-    dplyr::filter(grepl(pattern, field_name)) %>%
-    dplyr::select(field_name, field_label, select_choices_or_calculations) %>%
-    dplyr::arrange(field_name)
-  
-  message("Found ", nrow(fields), " matching milestone rows")
-  
-  if (nrow(fields) == 0) {
-    return(NULL)
-  }
-  
-  # Parse choices into table
-  result <- data.frame(
-    Row = character(nrow(fields)),
-    Level_1 = character(nrow(fields)),
-    Level_2 = character(nrow(fields)),
-    Level_3 = character(nrow(fields)),
-    Level_4 = character(nrow(fields)),
-    Level_5 = character(nrow(fields)),
-    stringsAsFactors = FALSE
-  )
-  
-  for (i in 1:nrow(fields)) {
-    # Extract row number from field name
-    row_num <- gsub(paste0("^", prefix_lower, comp_num, "_r"), "", fields$field_name[i])
-    result$Row[i] <- paste("Row", row_num)
-    
-    choices_text <- fields$select_choices_or_calculations[i]
-    
-    if (is.na(choices_text) || choices_text == "") {
-      message("Row ", i, ": No choices text")
-      next
+
+    # Helper: get milestone table from data dictionary
+    get_milestone_table_from_dict <- function(comp_code) {
+      dict <- tryCatch({
+        if (is.function(rdm_dict_data)) {
+          rdm_dict_data()
+        } else {
+          rdm_dict_data
+        }
+      }, error = function(e) {
+        message("Error getting data dictionary: ", e$message)
+        return(NULL)
+      })
+
+      if (is.null(dict)) {
+        message("Data dictionary is NULL")
+        return(NULL)
+      }
+
+      # Parse comp_code (e.g., "PC1" -> domain="PC", num="1")
+      domain <- gsub("\\d+$", "", comp_code)
+      comp_num <- gsub("^[A-Z]+", "", comp_code)
+
+      # Convert to lowercase for field matching
+      prefix_lower <- tolower(domain)
+      if (domain == "PBLI") prefix_lower <- "pbl"
+
+      # Find milestone row fields: pc1_r1, pc1_r2, etc.
+      pattern <- paste0("^", prefix_lower, comp_num, "_r\\d+$")
+
+      message("Looking for pattern: ", pattern, " (comp_code: ", comp_code, ")")
+
+      # Filter for matching fields
+      fields <- dict %>%
+        dplyr::filter(grepl(pattern, field_name)) %>%
+        dplyr::select(field_name, field_label, select_choices_or_calculations) %>%
+        dplyr::arrange(field_name)
+
+      message("Found ", nrow(fields), " matching milestone rows")
+
+      if (nrow(fields) == 0) {
+        return(NULL)
+      }
+
+      # Parse choices into table
+      result <- data.frame(
+        Row = character(nrow(fields)),
+        Level_1 = character(nrow(fields)),
+        Level_2 = character(nrow(fields)),
+        Level_3 = character(nrow(fields)),
+        Level_4 = character(nrow(fields)),
+        Level_5 = character(nrow(fields)),
+        stringsAsFactors = FALSE
+      )
+
+      for (i in 1:nrow(fields)) {
+        # Extract row number from field name
+        row_num <- gsub(paste0("^", prefix_lower, comp_num, "_r"), "", fields$field_name[i])
+        result$Row[i] <- paste("Row", row_num)
+
+        choices_text <- fields$select_choices_or_calculations[i]
+
+        if (is.na(choices_text) || choices_text == "") {
+          message("Row ", i, ": No choices text")
+          next
+        }
+
+        # Parse: "1, Description | 2, Description | ..."
+        choices <- strsplit(choices_text, "\\s*\\|\\s*")[[1]]
+
+        for (choice in choices) {
+          # Split on first comma to separate level from description
+          parts <- strsplit(trimws(choice), ",\\s*", perl = TRUE)[[1]]
+
+          if (length(parts) < 2) next
+
+          level <- as.numeric(trimws(parts[1]))
+
+          if (is.na(level) || level < 1 || level > 5) next
+
+          # Join remaining parts as description
+          description <- paste(parts[-1], collapse = ", ")
+          description <- trimws(description)
+
+          # Store in appropriate column
+          result[i, paste0("Level_", level)] <- description
+        }
+      }
+
+      message("Returning table with ", nrow(result), " rows")
+
+      return(result)
     }
-    
-    # Parse: "1, Description | 2, Description | ..."
-    choices <- strsplit(choices_text, "\\s*\\|\\s*")[[1]]
-    
-    for (choice in choices) {
-      # Split on first comma to separate level from description
-      parts <- strsplit(trimws(choice), ",\\s*", perl = TRUE)[[1]]
-      
-      if (length(parts) < 2) next
-      
-      level <- as.numeric(trimws(parts[1]))
-      
-      if (is.na(level) || level < 1 || level > 5) next
-      
-      # Join remaining parts as description
-      description <- paste(parts[-1], collapse = ", ")
-      description <- trimws(description)
-      
-      # Store in appropriate column
-      result[i, paste0("Level_", level)] <- description
-    }
-  }
-  
-  message("Returning table with ", nrow(result), " rows")
-  
-  return(result)
-}
     
     # Helper: get ILP field map
     get_ilp_field_map <- function(domain) {
