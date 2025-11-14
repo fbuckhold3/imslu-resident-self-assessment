@@ -231,13 +231,21 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       
       if (nrow(resident_data) == 0) {
         plot.new()
-        text(0.5, 0.5, "No milestone data\nfor this resident", 
+        text(0.5, 0.5, "No milestone data\nfor this resident",
              cex = 1.2, col = "gray60")
         return()
       }
-      
+
+      message("=== SPIDER PLOT DATA ===")
+      message("Resident data rows after filtering: ", nrow(resident_data))
+      message("Milestone columns: ", length(milestone_cols))
+      message("Sample milestone cols: ", paste(head(milestone_cols, 3), collapse = ", "))
+
       # Get scores as numeric
       scores <- as.numeric(resident_data[1, milestone_cols])
+
+      message("Extracted scores (first 5): ", paste(head(scores, 5), collapse = ", "))
+      message("Score range: ", min(scores, na.rm = TRUE), " to ", max(scores, na.rm = TRUE))
       
       # Get median scores if available
       median_scores <- NULL
