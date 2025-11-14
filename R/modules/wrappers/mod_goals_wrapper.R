@@ -62,75 +62,144 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
       }
     })
     
-    # Get current milestone data - HYBRID approach
 # Get current milestone data - HYBRID approach with DEBUG mode
-current_milestone_data <- reactive({
-  
-  # DEBUG MODE: Use fake data for testing
-  if (app_config$use_fake_milestone_data) {
-    message("⚠ DEBUG MODE: Using fake milestone data")
-    
-    # Build fake milestone data that matches what gmed::miles_plot expects
-    # Structure: competency codes (PC1, PC2, MK1, etc.) with levels
-    fake_data <- data.frame(
-      # PC subcompetencies
-      PC1 = 3, PC2 = 3, PC3 = 2, PC4 = 3, PC5 = 2, PC6 = 3,
-      # MK subcompetencies  
-      MK1 = 3, MK2 = 3, MK3 = 2,
-      # SBP subcompetencies
-      SBP1 = 3, SBP2 = 2, SBP3 = 3,
-      # PBLI subcompetencies
-      PBL1 = 3, PBL2 = 2,  # Note: PBLI becomes PBL in field names
-      # PROF subcompetencies
-      PROF1 = 3, PROF2 = 3, PROF3 = 2, PROF4 = 3,
-      # ICS subcompetencies
-      ICS1 = 3, ICS2 = 2, ICS3 = 3,
-      
-      stringsAsFactors = FALSE
-    )
-    
-    # Add record_id if miles_plot expects it
-    fake_data$record_id <- record_id()
-    
-    return(fake_data)
-  }
-  
-  # PRIORITY 1: Use just-entered milestone data from previous module
-  if (!is.null(milestone_output) && is.function(milestone_output)) {
-    milestone_mod <- milestone_output()
-    
-    # Check if module has current_data
-    if (!is.null(milestone_mod) && "current_data" %in% names(milestone_mod)) {
-      fresh_data <- milestone_mod$current_data()  # Call the reactive
-      
-      if (!is.null(fresh_data) && is.data.frame(fresh_data) && nrow(fresh_data) > 0) {
-        message("✓ Using fresh milestone data from current session")
-        return(fresh_data)
+    current_milestone_data <- reactive({
+      # DEBUG MODE: Use fake data for testing
+      if (exists("app_config") && !is.null(app_config$use_fake_milestone_data) && app_config$use_fake_milestone_data) {
+        message("⚠ DEBUG MODE: Using fake milestone data for goals")
+        
+        # Get period name directly
+        period_name <- if (is.function(period_info)) period_info() else period_info
+        
+        fake_data <- data.frame(
+          record_id = record_id(),
+          period_name = period_name,
+          # PC subcompetencies
+          rep_pc1_self = 3, rep_pc2_self = 3, rep_pc3_self = 2, 
+          rep_pc4_self = 3, rep_pc5_self = 2, rep_pc6_self = 3,
+          # MK subcompetencies  
+          rep_mk1_self = 3, rep_mk2_self = 3, rep_mk3_self = 2,
+          # SBP subcompetencies
+          rep_sbp1_self = 3, rep_sbp2_self = 2, rep_sbp3_self = 3,
+          # PBLI subcompetencies (note: uses 'pbl' in field names)
+          rep_pbl1_self = 3, rep_pbl2_self = 2,
+          # PROF subcompetencies
+          rep_prof1_self = 3, rep_prof2_self = 3, rep_prof3_self = 2, rep_prof4_self = 3,
+          # ICS subcompetencies
+          rep_ics1_self = 3, rep_ics2_self = 2, rep_ics3_self = 3,
+          stringsAsFactors = FALSE
+        )
+        
+        # Create fake median data
+        fake_medians <- data.frame(
+          period_name = period_name,
+          rep_pc1_self = 2.5, rep_pc2_self = 2.5, rep_pc3_self = 1.5, 
+          rep_pc4_self = 2.5, rep_pc5_self = 1.5, rep_pc6_self = 2.5,
+          rep_mk1_self = 2.5, rep_mk2_self = 2.5, rep_mk3_self = 1.5,
+          rep_sbp1_self = 2.5, rep_sbp2_self = 1.5, rep_sbp3_self = 2.5,
+          rep_pbl1_self = 2.5, rep_pbl2_self = 1.5,
+          rep_prof1_self = 2.5, rep_prof2_self = 2.5, rep_prof3_self = 1.5, rep_prof4_self = 2.5,
+          rep_ics1_self = 2.5, rep_ics2_self = 1.5, rep_ics3_self = 2.5,
+          n_residents = 50,
+          stringsAsFactors = FALSE
+        )
+        
+        return(list(
+          data = fake_data,
+          medians = fake_medians,
+          record_id = record_id(),
+          period_text = period_name,
+          milestone_cols = grep("^rep_.*_self$", names(fake_data), value = TRUE)
+        ))
       }
-    }
-  }
-  
-  # PRIORITY 2: Use milestone workflow from rdm_data (saved data)
-  req(rdm_data(), record_id())
-  app_data <- rdm_data()
-  
-  if (!is.null(app_data$milestone_workflow) && is.data.frame(app_data$milestone_workflow)) {
-    workflow <- app_data$milestone_workflow
-    
-    # Filter to current resident
-    resident_data <- workflow %>%
-      dplyr::filter(record_id == !!record_id())
-    
-    if (nrow(resident_data) > 0) {
-      message("✓ Using milestone data from REDCap")
-      return(resident_data)
-    }
-  }
-  
-  # FALLBACK: Return empty data frame (not NULL)
-  message("⚠ No milestone data available - returning empty data frame")
-  data.frame()
-})
+      
+      # PRIORITY 1: Use just-entered milestone data from previous module
+      if (!is.null(milestone_output) && is.function(milestone_output)) {
+        milestone_mod <- milestone_output()
+        if (!is.null(milestone_mod) && "current_data" %in% names(milestone_mod)) {
+          fresh_data <- milestone_mod$current_data()
+          if (!is.null(fresh_data) && is.data.frame(fresh_data) && nrow(fresh_data) > 0) {
+            message("✓ Using fresh milestone data from current session")
+            
+            period_name <- if (is.function(period_info)) period_info() else period_info
+            milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$", 
+                                  names(fresh_data), value = TRUE)
+            
+            # Get median data from milestone_workflow structure
+            app_data <- rdm_data()
+            median_data <- NULL
+            
+            if (!is.null(app_data$milestone_workflow)) {
+              if ("milestone_selfevaluation_c33c_rep_self" %in% names(app_data$milestone_workflow)) {
+                workflow_obj <- app_data$milestone_workflow$milestone_selfevaluation_c33c_rep_self
+                if (!is.null(workflow_obj$medians)) {
+                  median_data <- workflow_obj$medians %>%
+                    dplyr::filter(period_name == !!period_name)
+                }
+              }
+            }
+            
+            return(list(
+              data = fresh_data,
+              medians = median_data,
+              record_id = record_id(),
+              period_text = period_name,
+              milestone_cols = milestone_cols
+            ))
+          }
+        }
+      }
+      
+      # PRIORITY 2: Use milestone workflow from rdm_data (saved data)
+      req(rdm_data(), record_id(), period_info)
+      
+      app_data <- rdm_data()
+      period_name <- if (is.function(period_info)) period_info() else period_info
+      
+      # Check milestone_workflow structure
+      if (!is.null(app_data$milestone_workflow) && 
+          "milestone_selfevaluation_c33c_rep_self" %in% names(app_data$milestone_workflow)) {
+        
+        workflow_obj <- app_data$milestone_workflow$milestone_selfevaluation_c33c_rep_self
+        
+        if (!is.null(workflow_obj$data)) {
+          milestone_data <- workflow_obj$data
+          
+          # Filter for current resident and period
+          resident_data <- milestone_data %>%
+            dplyr::filter(
+              record_id == !!record_id(),
+              period_name == !!period_name
+            )
+          
+          if (nrow(resident_data) > 0) {
+            message("✓ Using milestone data from milestone_workflow")
+            
+            milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$", 
+                                  names(resident_data), value = TRUE)
+            
+            # Get median data for this period
+            median_data <- NULL
+            if (!is.null(workflow_obj$medians)) {
+              median_data <- workflow_obj$medians %>%
+                dplyr::filter(period_name == !!period_name)
+            }
+            
+            return(list(
+              data = resident_data,
+              medians = median_data,
+              record_id = record_id(),
+              period_text = period_name,
+              milestone_cols = milestone_cols
+            ))
+          }
+        }
+      }
+      
+      # FALLBACK: Return empty data frame (not NULL)
+      message("⚠ No milestone data available - returning empty data frame")
+      data.frame()
+    })
     
     # Subcompetency maps
     subcompetency_maps <- list(
@@ -184,15 +253,28 @@ current_milestone_data <- reactive({
     # Initialize goal setting module
     goals_mod <- goalSettingServer(
       "entry",
-      rdm_dict_data = data_dict,
+      rdm_dict_data = reactive({
+        req(data_dict())
+        dict <- data_dict()
+        if (is.data.frame(dict)) {
+          if (!"Variable / Field Name" %in% names(dict) && "field_name" %in% names(dict)) {
+            dict <- dict %>%
+              dplyr::mutate(
+                `Variable / Field Name` = field_name,
+                `Choices, Calculations, OR Slider Labels` = select_choices_or_calculations,
+                `Field Label` = field_label
+              )
+          }
+        }
+        dict
+      }),
       subcompetency_maps = subcompetency_maps,
       competency_list = competency_list,
       milestone_levels = milestone_levels,
       current_milestone_data = current_milestone_data,
       resident_info = resident_info,
       selected_period = reactive({
-        period_config <- get_period_structure(period_info())
-        period_config$period_name
+        if (is.function(period_info)) period_info() else period_info
       })
     )
     
@@ -200,8 +282,11 @@ current_milestone_data <- reactive({
     observe({
       req(ilp_data(), record_id())
       
-      period_config <- get_period_structure(period_info())
-      prev_period <- get_previous_period(period_config$period_name)
+      # Get current period name
+      current_period_name <- if (is.function(period_info)) period_info() else period_info
+      
+      # Use the helper from period_config.R
+      prev_period <- get_previous_period(current_period_name)
       
       if (!is.na(prev_period)) {
         prev_goals <- load_previous_goals(
@@ -216,7 +301,7 @@ current_milestone_data <- reactive({
       }
     })
     
-    # Handle submission
+    # ADD THIS: Handle submission
     observeEvent(goals_mod$submission_ready(), {
       req(goals_mod$submission_ready())
       
@@ -238,7 +323,7 @@ current_milestone_data <- reactive({
       goals_mod$reset_submission()
       
       if (result$success) {
-        showNotification("✓ ILP goals submitted successfully!", type = "message", duration = 5)
+        showNotification("✅ ILP goals submitted successfully!", type = "message", duration = 5)
       } else {
         showNotification(paste("Error:", result$message), type = "error", duration = 10)
       }
@@ -247,6 +332,7 @@ current_milestone_data <- reactive({
     return(goals_mod)
   })
 }
+
 
 
 #' Submit ILP Goals to REDCap

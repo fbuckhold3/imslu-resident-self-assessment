@@ -51,6 +51,8 @@ goalSettingUI <- function(id) {
         fluidRow(
           column(4,
                  div(class = "milestone-plot-panel",
+                     style = "border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; background-color: white;",
+                     h5("Your Milestone Self-Assessment", style = "color: #2c3e50; text-align: center;"),
                      plotOutput(ns("milestone_plot"), height = "400px")
                  )
           ),
@@ -88,6 +90,36 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
     stored_responses <- reactiveVal(list())
     previous_goals <- reactiveVal(NULL)
     submission_ready <- reactiveVal(FALSE)
+
+    # ADD THIS COMPLETE SECTION:
+    # Render milestone spider plot
+    output$milestone_plot <- renderPlot({
+      milestone_data <- current_milestone_data()
+      
+      # If empty or NULL, show placeholder
+      if(is.null(milestone_data) || (is.data.frame(milestone_data) && nrow(milestone_data) == 0)) {
+        plot.new()
+        text(0.5, 0.5, "Complete milestone self-assessment\nto see your spider plot", 
+             cex = 1.2, col = "gray60")
+        return()
+      }
+      
+      # Your data should be a data frame with columns like PC1, PC2, MK1, etc.
+      # and rows for the resident and median
+      tryCatch({
+        req(resident_info(), selected_period())
+        gmed::miles_plot(
+          data = milestone_data,
+          name = resident_info(),
+          period = selected_period()
+        )
+      }, error = function(e) {
+        message("Miles plot error: ", e$message)
+        plot.new()
+        text(0.5, 0.5, "Spider plot unavailable", 
+             cex = 1.2, col = "gray60")
+      })
+    })
 
     # Build competency choice lists
     pcmk_choices <- c()
@@ -136,72 +168,116 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       })
     })
 
-    # Helper to get field labels from data dictionary
-    get_field_label <- function(field_name, default_label = NULL) {
-      req(rdm_dict_data)
-      label <- rdm_dict_data %>%
-        dplyr::filter(field_name == !!field_name) %>%
+    
+ # Helper to get field labels from data dictionary
+    get_field_label <- function(field_name_val, default_label = NULL) {
+      # Unwrap reactive if needed
+      dict <- if(is.function(rdm_dict_data)) {
+        tryCatch(rdm_dict_data(), error = function(e) NULL)
+      } else {
+        rdm_dict_data
+      }
+      
+      if (is.null(dict)) return(default_label %||% field_name_val)
+      
+      label <- dict %>%
+        dplyr::filter(field_name == !!field_name_val) %>%
         dplyr::pull(field_label)
 
-      if(length(label) > 0) label[1] else default_label %||% field_name
+      if(length(label) > 0) label[1] else default_label %||% field_name_val
     }
 
+# Helper to get milestone data from data dictionary
     # Helper to get milestone data from data dictionary
     get_milestone_data_from_dict <- function(competency_code) {
-      req(rdm_dict_data, competency_code)
-
-      prefix_lower <- tolower(competency_code)
+      # Unwrap reactive if needed
+      dict <- if(is.function(rdm_dict_data)) {
+        tryCatch(rdm_dict_data(), error = function(e) NULL)
+      } else {
+        rdm_dict_data
+      }
       
-      # Handle PBLI -> PBL conversion
-      if (startsWith(toupper(competency_code), "PBLI")) {
-        prefix_lower <- gsub("pbli", "pbl", prefix_lower)
+      if (is.null(dict) || is.null(competency_code)) return(NULL)
+
+      # Extract the domain prefix (PC, MK, SBP, etc.)
+      domain <- sub("\\d+$", "", competency_code)
+      comp_num <- sub("^[A-Z]+", "", competency_code)
+      
+      # Convert to lowercase for field name matching
+      prefix_lower <- tolower(domain)
+      
+      # Handle PBLI -> PBL conversion for REDCap field names
+      if (domain == "PBLI") {
+        prefix_lower <- "pbl"
       }
 
-      # Find all fields matching this competency pattern
-      fields <- rdm_dict_data %>%
-        dplyr::filter(grepl(paste0("^", prefix_lower, "\\d+_r\\d+$"), field_name, ignore.case = TRUE)) %>%
-        dplyr::select(field_name, select_choices_or_calculations)
+      # Find all milestone row fields for this competency
+      # Pattern: pc1_r1, pc1_r2, etc.
+      pattern <- paste0("^", prefix_lower, comp_num, "_r\\d+$")
+      
+      fields <- dict %>%
+        dplyr::filter(grepl(pattern, field_name)) %>%
+        dplyr::select(field_name, select_choices_or_calculations) %>%
+        dplyr::arrange(field_name)
 
-      if (nrow(fields) == 0) return(NULL)
+      if (nrow(fields) == 0) {
+        return(NULL)
+      }
 
-      # Create data frame with milestone rows
+      # Create data frame to hold milestone table
       data <- data.frame(
         Milestone = character(),
-        Level.1 = character(),
-        Level.2 = character(),
-        Level.3 = character(),
-        Level.4 = character(),
-        Level.5 = character(),
-        stringsAsFactors = FALSE
+        Novice = character(),
+        `Advanced Beginner` = character(),
+        Competent = character(),
+        Proficient = character(),
+        Expert = character(),
+        stringsAsFactors = FALSE,
+        check.names = FALSE
       )
 
+      # Parse each row
       for (i in 1:nrow(fields)) {
-        field <- fields$field_name[i]
+        field_name_val <- fields$field_name[i]
         choices_text <- fields$select_choices_or_calculations[i]
 
         if (is.na(choices_text) || choices_text == "") next
 
-        # Extract row number
-        row_num <- sub(paste0("^", prefix_lower, "\\d+_r(\\d+)$"), "\\1", field)
-        milestone_name <- paste0(toupper(competency_code), " Row ", row_num)
+        # Extract row number from field name (e.g., pc1_r1 -> 1)
+        row_match <- regmatches(field_name_val, regexpr("_r(\\d+)$", field_name_val))
+        if (length(row_match) == 0) next
+        row_num <- sub("_r", "", row_match)
+        
+        milestone_name <- paste0(domain, comp_num, " Row ", row_num)
 
-        # Parse the choices (levels)
-        choices <- strsplit(choices_text, " \\| ")[[1]]
+        # Parse choices: format is "1, Description | 2, Description | ..."
+        choices <- strsplit(choices_text, "\\s*\\|\\s*")[[1]]
         level_texts <- rep("", 5)
 
         for (choice in choices) {
-          parts <- strsplit(choice, ", ", fixed = TRUE)[[1]]
+          # Split on first comma only
+          parts <- strsplit(choice, ",\\s*", perl = TRUE)[[1]]
           if (length(parts) < 2) next
 
-          level <- as.numeric(parts[1])
+          level <- as.numeric(trimws(parts[1]))
           if (is.na(level) || level < 1 || level > 5) next
 
+          # Rejoin rest of text in case there were commas in description
           description <- paste(parts[-1], collapse = ", ")
-          level_texts[level] <- description
+          level_texts[level] <- trimws(description)
         }
 
         # Add row to data frame
-        data[nrow(data) + 1,] <- c(milestone_name, level_texts)
+        data <- rbind(data, data.frame(
+          Milestone = milestone_name,
+          Novice = level_texts[1],
+          `Advanced Beginner` = level_texts[2],
+          Competent = level_texts[3],
+          Proficient = level_texts[4],
+          Expert = level_texts[5],
+          stringsAsFactors = FALSE,
+          check.names = FALSE
+        ))
       }
 
       return(data)

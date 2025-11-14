@@ -215,7 +215,7 @@ get_module_ui_function <- function(module_id) {
     board_prep = "mod_board_prep_ui",
     skills_review = "mod_skills_review_ui",
     learning_styles = "mod_learning_styles_ui",
-    goals = "mod_goals_ui",
+    goals = "mod_goals_wrapper_ui",
     concerns = "mod_concerns_ui"
   )
   
@@ -242,7 +242,7 @@ get_module_server_function <- function(module_id) {
     board_prep = "mod_board_prep_server",
     skills_review = "mod_skills_review_server",
     learning_styles = "mod_learning_styles_server",
-    goals = "mod_goals_server",
+    goals = "mod_goals_wrapper_server",
     concerns = "mod_concerns_server"
   )
   

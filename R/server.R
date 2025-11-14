@@ -312,52 +312,81 @@ active_period <- reactive({
 # ============================================================================
 
 output$progress_stepper <- renderUI({
-  req(values$authenticated, active_period())
+  req(active_period())
   
   period_info <- active_period()
   config <- get_period_structure(period_info$period_number)
   modules <- config$modules
   module_titles <- config$module_titles
-  
   current_index <- current_module_index()
   
-  # Just the stepper HTML (CSS is now in ui.R)
   div(
     class = "stepper-container",
     lapply(seq_along(modules), function(i) {
       module_key <- modules[i]
-      module_title <- module_titles[[module_key]]
+      is_active <- (i == current_index)
+      is_completed <- (i < current_index)
       
-      # Determine state
-      is_active <- i == current_index
-      is_completed <- i < current_index
-      is_incomplete <- i > current_index
+      circle_class <- if (is_active) {
+        "stepper-circle active"
+      } else if (is_completed) {
+        "stepper-circle completed"
+      } else {
+        "stepper-circle incomplete"
+      }
       
-      circle_class <- if (is_active) "active" else if (is_completed) "completed" else "incomplete"
-      label_class <- if (is_active) "active" else ""
-      line_class <- if (is_completed) "completed" else ""
+      label_class <- if (is_active) {
+        "stepper-label active"
+      } else {
+        "stepper-label"
+      }
       
-      div(
-        class = "stepper-item",
-        onclick = paste0("Shiny.setInputValue('stepper_nav_", i, "', Math.random())"),
-        
-        # Connection line
-        div(class = paste("stepper-line", line_class)),
-        
-        # Circle with number or checkmark
+      line_class <- if (is_completed) {
+        "stepper-line completed"
+      } else {
+        "stepper-line"
+      }
+      
+      # Make each stepper item clickable using tags$a instead of actionLink
+      tags$a(
+        href = "#",
+        class = "stepper-item text-decoration-none",
+        onclick = sprintf("Shiny.setInputValue('nav_to_module_%d', Math.random());", i),
         div(
-          class = paste("stepper-circle", circle_class),
-          if (is_completed) icon("check") else as.character(i)
-        ),
-        
-        # Label
-        div(
-          class = paste("stepper-label", label_class),
-          module_title
+          div(class = circle_class, i),
+          div(class = label_class, module_titles[[module_key]]),
+          div(class = line_class)
         )
       )
     })
   )
+})
+  
+  # ============================================================================
+# STEPPER NAVIGATION - Allow clicking to jump to modules
+# ============================================================================
+
+observe({
+  req(active_period())
+  
+  period_info <- active_period()
+  config <- get_period_structure(period_info$period_number)
+  modules <- config$modules
+  
+  # Create observers for each module click
+  lapply(seq_along(modules), function(i) {
+    observeEvent(input[[paste0("nav_to_module_", i)]], {
+      # Allow navigation to any module (free navigation)
+      current_module_index(i)
+      
+      # Alternative: Only allow backward or to current
+      # if (i <= current_module_index()) {
+      #   current_module_index(i)
+      # } else {
+      #   showNotification("Please complete modules in order", type = "warning", duration = 3)
+      # }
+    })
+  })
 })
   
   # ============================================================================
