@@ -494,11 +494,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         selectInput(ns(paste0("subcomp_", domain)),
                    "Select Subcompetency:",
                    choices = choices,
-                   width = "100%"),
-        textAreaInput(ns(paste0("how_", domain)),
-                     "How will you achieve this goal?",
-                     rows = 4,
-                     width = "100%")
+                   width = "100%")
       )
     }
     
@@ -585,6 +581,15 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
           ),
           div(class = "alert alert-info", style = "margin-top: 15px;",
               uiOutput(ns(paste0("selected_milestone_desc_", domain)))
+          ),
+          hr(),
+          div(style = "margin-top: 20px;",
+              h5("Goal Achievement Plan", style = "margin-bottom: 10px;"),
+              textAreaInput(ns(paste0("how_", domain)),
+                           "How will you achieve this goal?",
+                           rows = 4,
+                           width = "100%",
+                           placeholder = "Describe your specific actions and strategies to reach this milestone level...")
           )
       )
     }
