@@ -1,6 +1,15 @@
+#' Goals Wrapper Module UI
+#' @export
+mod_goals_wrapper_ui <- function(id) {
+  ns <- NS(id)
+
+  # Simple pass-through to the main goals UI
+  goalSettingUI(ns("entry"))
+}
+
 #' Goals Wrapper Server
 #' @export
-mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict, 
+mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
                                      milestone_output = NULL) {
   moduleServer(id, function(input, output, session) {
     
