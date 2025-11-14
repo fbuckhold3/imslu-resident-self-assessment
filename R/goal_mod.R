@@ -50,9 +50,9 @@ goalSettingUI <- function(id) {
       # Left: Milestone Spider Plot
       column(5,
        div(class = "goal-card",
-           h5("Your Milestone Self-Assessment", 
+           h5("Your Milestone Self-Assessment",
               style = "color: #2c3e50; text-align: center; margin-bottom: 20px;"),
-           plotOutput(ns("spider_plot"), height = "500px")
+           plotly::plotlyOutput(ns("spider_plot"), height = "500px")
        )
       ),
 
@@ -153,30 +153,25 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       }
     })
     
-    # Render spider plot
-    output$spider_plot <- renderPlot({
+    # Render spider plot using gmed function
+    output$spider_plot <- plotly::renderPlotly({
       ms_data <- milestone_data()
-      
+
       if (is.null(ms_data) || is.null(ms_data$data) || nrow(ms_data$data) == 0) {
-        plot.new()
-        text(0.5, 0.5, "Complete milestone\nself-assessment first", 
-             cex = 1.2, col = "gray60", family = "sans")
-        return()
+        return(NULL)
       }
-      
+
       milestone_cols <- ms_data$milestone_cols
-      
+
       if (is.null(milestone_cols) || length(milestone_cols) == 0) {
-        milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$", 
+        milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$",
                               names(ms_data$data), value = TRUE)
       }
-      
+
       if (length(milestone_cols) == 0) {
-        plot.new()
-        text(0.5, 0.5, "No milestone data", cex = 1.2, col = "gray60")
-        return()
+        return(NULL)
       }
-      
+
       # Get resident info
       res_info <- if (is.function(resident_info)) resident_info() else resident_info
       rec_id <- res_info$record_id
@@ -228,12 +223,9 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
           dplyr::arrange(dplyr::desc(redcap_repeat_instance)) %>%
           dplyr::slice(1)
       }
-      
+
       if (nrow(resident_data) == 0) {
-        plot.new()
-        text(0.5, 0.5, "No milestone data\nfor this resident",
-             cex = 1.2, col = "gray60")
-        return()
+        return(NULL)
       }
 
       message("=== SPIDER PLOT DATA ===")
@@ -241,118 +233,51 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       message("Milestone columns: ", length(milestone_cols))
       message("Sample milestone cols: ", paste(head(milestone_cols, 3), collapse = ", "))
 
-      # Get scores as numeric
-      scores <- as.numeric(resident_data[1, milestone_cols])
-
-      message("Extracted scores (first 5): ", paste(head(scores, 5), collapse = ", "))
-      message("Score range: ", min(scores, na.rm = TRUE), " to ", max(scores, na.rm = TRUE))
-      
-      # Get median scores if available
-      median_scores <- NULL
+      # Get median data if available
+      median_data <- NULL
       if (!is.null(ms_data$medians) && nrow(ms_data$medians) > 0) {
         median_data <- ms_data$medians %>%
           dplyr::filter(period_name == !!current_period)
-        
-        if (nrow(median_data) > 0) {
-          median_scores <- as.numeric(median_data[1, milestone_cols])
+
+        if (nrow(median_data) == 0) {
+          median_data <- NULL
         }
       }
-      
-      # Create spider plot
+
+      # Detect milestone type from column names
+      milestone_type <- if (any(grepl("^acgme_", milestone_cols))) {
+        "acgme"
+      } else if (any(grepl("_self$", milestone_cols))) {
+        "self"
+      } else {
+        "program"
+      }
+
+      message("Using milestone type: ", milestone_type)
+
+      # Create resident lookup data frame
+      resident_lookup <- data.frame(
+        record_id = rec_id,
+        name_first = res_info$name,
+        name_last = "",
+        stringsAsFactors = FALSE
+      )
+
+      # Call gmed enhanced spider plot function
       tryCatch({
-        create_spider_plot(scores, median_scores, milestone_cols)
+        gmed::create_enhanced_milestone_spider_plot(
+          milestone_data = resident_data,
+          median_data = median_data,
+          resident_id = as.character(rec_id),
+          period_text = current_period,
+          milestone_type = milestone_type,
+          resident_data = resident_lookup
+        )
       }, error = function(e) {
-        plot.new()
-        text(0.5, 0.5, paste("Plot error:", e$message), cex = 0.8, col = "red")
         message("Spider plot error: ", e$message)
+        return(NULL)
       })
     })
-    
-    # Helper: Create spider plot
-    create_spider_plot <- function(scores, medians = NULL, col_names) {
-      # Get labels - handle both rep_ and acgme_ prefixes
-      labels <- sapply(col_names, function(x) {
-        # Remove common prefixes and suffixes
-        label <- toupper(x)
-        label <- gsub("^REP_", "", label)
-        label <- gsub("^ACGME_", "", label)
-        label <- gsub("_SELF$", "", label)
-        label <- gsub("_PROGRAM$", "", label)
-        return(label)
-      })
-      
-      # Plot setup
-      par(mar = c(1, 1, 3, 1))
-
-      n <- length(scores)
-      angles <- seq(0, 2*pi, length.out = n + 1)[1:n]
-
-      # All milestone scales are 1-9 (self, program, ACGME)
-      max_scale <- 9
-
-      plot(0, 0, type = "n", xlim = c(-1.3, 1.3), ylim = c(-1.3, 1.3),
-           asp = 1, axes = FALSE, xlab = "", ylab = "",
-           main = "Your Milestone Scores (1-9 scale)")
-
-      # Draw concentric circles at 1, 3, 5, 7, 9 for 9-point scale
-      levels_to_draw <- c(1, 3, 5, 7, 9)
-
-      for (level in levels_to_draw) {
-        r <- level / max_scale
-        circle_x <- r * cos(angles)
-        circle_y <- r * sin(angles)
-        lines(c(circle_x, circle_x[1]), c(circle_y, circle_y[1]),
-              col = "gray80", lty = 2)
-
-        # Add level labels
-        text(0, -r - 0.05, level, cex = 0.6, col = "gray50")
-      }
-
-      # Draw radial lines
-      for (i in 1:n) {
-        lines(c(0, cos(angles[i])), c(0, sin(angles[i])), col = "gray70")
-      }
-
-      # Plot median scores if available
-      if (!is.null(medians)) {
-        valid_medians <- pmax(0, pmin(max_scale, medians, na.rm = TRUE))
-        valid_medians[is.na(valid_medians)] <- 0
-        r_medians <- valid_medians / max_scale
-        x_med <- r_medians * cos(angles)
-        y_med <- r_medians * sin(angles)
-
-        polygon(c(x_med, x_med[1]), c(y_med, y_med[1]),
-                col = rgb(0.7, 0.7, 0.7, 0.2),
-                border = rgb(0.5, 0.5, 0.5, 0.6),
-                lty = 2, lwd = 1.5)
-      }
-
-      # Plot resident scores - raw values normalized to detected scale
-      valid_scores <- pmax(0, pmin(max_scale, scores, na.rm = TRUE))
-      valid_scores[is.na(valid_scores)] <- 0
-      r_scores <- valid_scores / max_scale
-      x <- r_scores * cos(angles)
-      y <- r_scores * sin(angles)
-      
-      polygon(c(x, x[1]), c(y, y[1]), 
-              col = rgb(0, 0.4, 0.7, 0.3), 
-              border = rgb(0, 0.4, 0.7, 0.8), 
-              lwd = 2)
-      
-      # Add labels
-      label_r <- 1.18
-      text(label_r * cos(angles), label_r * sin(angles), 
-           labels, cex = 0.6, font = 2)
-      
-      # Add legend if medians shown
-      if (!is.null(medians)) {
-        legend("topright", 
-               legend = c("Your Score", "Cohort Median"),
-               fill = c(rgb(0, 0.4, 0.7, 0.3), rgb(0.7, 0.7, 0.7, 0.2)),
-               border = c(rgb(0, 0.4, 0.7, 0.8), rgb(0.5, 0.5, 0.5, 0.6)),
-               cex = 0.7, bty = "n")
-      }
-    }
     
     # Render goal content based on page
     output$goal_content <- renderUI({
