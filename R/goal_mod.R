@@ -157,6 +157,22 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
     output$spider_plot <- plotly::renderPlotly({
       ms_data <- milestone_data()
 
+      # DEBUG: Check median data structure
+      cat("\n=== MILESTONE DATA STRUCTURE ===\n")
+      cat("ms_data is NULL:", is.null(ms_data), "\n")
+      if (!is.null(ms_data)) {
+        cat("ms_data$medians is NULL:", is.null(ms_data$medians), "\n")
+        if (!is.null(ms_data$medians)) {
+          cat("Median data columns:\n")
+          print(names(ms_data$medians))
+          cat("\nMedian data rows:", nrow(ms_data$medians), "\n")
+          if (nrow(ms_data$medians) > 0) {
+            cat("First row of median data:\n")
+            print(head(ms_data$medians, 1))
+          }
+        }
+      }
+
       if (is.null(ms_data) || is.null(ms_data$data) || nrow(ms_data$data) == 0) {
         return(NULL)
       }
