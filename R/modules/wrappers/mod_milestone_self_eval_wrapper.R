@@ -396,5 +396,8 @@ output$prev_acgme_plot <- plotly::renderPlotly({
         )
       }
     })
+
+    # Return the milestone_scores object so other modules can access it
+    return(milestone_scores)
   })
 }
