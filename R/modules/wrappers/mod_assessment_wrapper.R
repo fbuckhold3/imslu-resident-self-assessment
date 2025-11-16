@@ -24,54 +24,36 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
     # Get resident name separately
     resident_name <- reactive({
       req(rdm_data(), record_id())
-      
+
       app_data <- rdm_data()
-      
+
       # Get name from residents table
       resident_info <- app_data$residents %>%
         dplyr::filter(record_id == !!record_id()) %>%
         dplyr::slice(1)
-      
+
       if (nrow(resident_info) > 0 && !is.na(resident_info$name)) {
         return(resident_info$name)
       } else {
         return(paste("Resident", record_id()))
       }
     })
-    
-    # Prepare combined data for charts
-    combined_data <- reactive({
-      req(rdm_data())
-      
-      app_data <- rdm_data()
-      
-      if ("faculty_evaluation" %in% names(app_data$all_forms)) {
-        combined <- bind_rows(
-          app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
-          app_data$all_forms$questions %>% mutate(source_form = "questions"),
-          app_data$all_forms$faculty_evaluation %>% mutate(source_form = "faculty_evaluation")
-        )
-      } else {
-        combined <- bind_rows(
-          app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
-          app_data$all_forms$questions %>% mutate(source_form = "questions")
-        )
-      }
-      
-      return(combined)
-    })
-    
-    # Raw assessment data for plus_delta (expects redcap_repeat_instrument)
+
+    # Raw assessment data with redcap_repeat_instrument column
+    # This is what the detail viz component needs to filter properly
     raw_assessment_data <- reactive({
       req(rdm_data())
       rdm_data()$all_forms$assessment
     })
-    
-    # Call the gmed wrapper with BOTH data sources
+
+    # Call the gmed wrapper
+    # Pass raw assessment data as main rdm_data so detail viz can filter on
+    # redcap_repeat_instrument == "assessment"
+    # The include_questions = TRUE parameter handles questions display separately
     gmed::mod_assessment_viz_wrapper_server(
       "viz_wrapper",
-      rdm_data = combined_data,
-      rdm_data_raw = raw_assessment_data,  # ADD THIS
+      rdm_data = raw_assessment_data,
+      rdm_data_raw = raw_assessment_data,
       record_id = record_id,
       data_dict = data_dict,
       include_questions = TRUE,
