@@ -8,7 +8,10 @@ ui <- page_navbar(
   id = "main_nav",
   theme = bs_theme(version = 5, bootswatch = "cosmo"),
   fillable = FALSE,
-  
+
+  # Enable shinyjs for loading indicators
+  shinyjs::useShinyjs(),
+
   # Access Code Page
   nav_panel(
     title = NULL,
@@ -95,6 +98,24 @@ ui <- page_navbar(
     "))
   ),
 
+
+    # Loading overlay (shown on startup)
+    div(
+      id = "loading_overlay",
+      style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+              background: rgba(255,255,255,0.95); z-index: 9999;
+              display: flex; align-items: center; justify-content: center;",
+      div(
+        class = "text-center",
+        div(
+          class = "spinner-border text-primary mb-3",
+          style = "width: 4rem; height: 4rem;",
+          role = "status"
+        ),
+        h3("Loading Application..."),
+        p(class = "text-muted", id = "loading_message", "Initializing...")
+      )
+    ),
 
     div(
       class = "container mt-5",

@@ -4,49 +4,99 @@
 # ============================================================================
 
 server <- function(input, output, session) {
-  
+
   # ============================================================================
   # REACTIVE VALUES
   # ============================================================================
-  
+
   values <- reactiveValues(
     authenticated = FALSE,
     current_resident = NULL,
     resident_info = NULL,
-    app_data = NULL
+    app_data = NULL,
+    data_loaded = FALSE
   )
-  
+
+  # ============================================================================
+  # DATA LOADING ON STARTUP - with progress messages
+  # ============================================================================
+
+  observe({
+    # Run once on startup
+    isolate({
+      if (!values$data_loaded) {
+
+        # Update loading message
+        shinyjs::html("loading_message", "Connecting to REDCap database...")
+
+        # Small delay to ensure UI renders
+        Sys.sleep(0.5)
+
+        tryCatch({
+          # Update message
+          shinyjs::html("loading_message", "Loading resident data...")
+
+          # Load the data
+          values$app_data <- load_app_data()
+
+          # Update message
+          shinyjs::html("loading_message", "Processing assessments...")
+          Sys.sleep(0.3)
+
+          # Update message
+          shinyjs::html("loading_message", "Preparing milestones...")
+          Sys.sleep(0.3)
+
+          # Mark as loaded
+          values$data_loaded <- TRUE
+
+          # Update message
+          shinyjs::html("loading_message", "Ready!")
+          Sys.sleep(0.2)
+
+          # Hide the loading overlay
+          shinyjs::hide("loading_overlay", anim = TRUE, animType = "fade")
+
+          message("App data loaded successfully on startup")
+
+        }, error = function(e) {
+          # Show error message
+          shinyjs::html("loading_message",
+                       paste0("Error loading data: ", e$message,
+                             "<br>Please refresh the page or contact support."))
+          showNotification("Failed to load application data. Please refresh the page.",
+                         type = "error", duration = NULL)
+        })
+      }
+    })
+  })
+
   # ============================================================================
   # AUTHENTICATION - Using gmed universal function
   # ============================================================================
-  
+
   observeEvent(input$submit_code, {
-    req(input$access_code_input)
-    
-    # Load app data first
-    if (is.null(values$app_data)) {
-      values$app_data <- load_app_data()
-    }
-    
-    # Authenticate using gmed function
+    req(input$access_code_input, values$data_loaded)
+
+    # Data is already loaded, just authenticate
     auth_result <- gmed::authenticate_resident(
       access_code = input$access_code_input,
       residents_df = values$app_data$residents,
       allow_record_id = TRUE,
       debug = app_config$debug_mode
     )
-    
+
     if (auth_result$success) {
       # Success!
       values$authenticated <- TRUE
       values$resident_info <- auth_result$resident_info
       values$current_resident <- auth_result$resident_info$record_id
-      
+
       # Navigate to intro page
       updateNavbarPage(session, "main_nav", selected = "intro")
-      
+
       showNotification(auth_result$message, type = "message")
-      
+
     } else {
       # Failed
       shinyjs::show("access_code_error")
