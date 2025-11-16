@@ -39,21 +39,28 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       }
     })
 
-    # Raw assessment data with redcap_repeat_instrument column
-    # This is what the detail viz component needs to filter properly
-    raw_assessment_data <- reactive({
+    # Prepare combined assessment + questions data with redcap_repeat_instrument
+    # This is what the wrapper expects - both forms combined
+    combined_assessment_questions <- reactive({
       req(rdm_data())
-      rdm_data()$all_forms$assessment
+
+      app_data <- rdm_data()
+
+      # Bind assessment and questions, preserving redcap_repeat_instrument
+      combined <- bind_rows(
+        app_data$all_forms$assessment,
+        app_data$all_forms$questions
+      )
+
+      return(combined)
     })
 
     # Call the gmed wrapper
-    # Pass raw assessment data as main rdm_data so detail viz can filter on
-    # redcap_repeat_instrument == "assessment"
-    # The include_questions = TRUE parameter handles questions display separately
+    # Pass combined data that has both assessment and questions with redcap_repeat_instrument
     gmed::mod_assessment_viz_wrapper_server(
       "viz_wrapper",
-      rdm_data = raw_assessment_data,
-      rdm_data_raw = raw_assessment_data,
+      rdm_data = combined_assessment_questions,
+      rdm_data_raw = combined_assessment_questions,
       record_id = record_id,
       data_dict = data_dict,
       include_questions = TRUE,
