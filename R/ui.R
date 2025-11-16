@@ -9,94 +9,98 @@ ui <- page_navbar(
   theme = bs_theme(version = 5, bootswatch = "cosmo"),
   fillable = FALSE,
 
-  # Enable shinyjs for loading indicators
-  shinyjs::useShinyjs(),
+  # Header elements (not inside nav_panel)
+  header = tagList(
+    # Enable shinyjs for loading indicators
+    shinyjs::useShinyjs(),
+
+    # Load gmed styles
+    gmed::load_gmed_styles(theme = "slucare"),
+
+    # Add stepper CSS
+    tags$head(
+      tags$style(HTML("
+        .stepper-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          position: relative;
+        }
+        .stepper-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex: 1;
+          position: relative;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .stepper-item:hover .stepper-circle {
+          transform: scale(1.1);
+        }
+        .stepper-circle {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 0.875rem;
+          margin-bottom: 0.5rem;
+          transition: all 0.3s ease;
+          z-index: 2;
+          position: relative;
+        }
+        .stepper-circle.active {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .stepper-circle.completed {
+          background: #10b981;
+          color: white;
+        }
+        .stepper-circle.incomplete {
+          background: #e5e7eb;
+          color: #9ca3af;
+          border: 2px solid #d1d5db;
+        }
+        .stepper-label {
+          font-size: 0.75rem;
+          text-align: center;
+          max-width: 100px;
+          line-height: 1.2;
+          color: #6b7280;
+          font-weight: 500;
+        }
+        .stepper-label.active {
+          color: #667eea;
+          font-weight: 600;
+        }
+        .stepper-line {
+          position: absolute;
+          top: 18px;
+          left: 50%;
+          right: -50%;
+          height: 2px;
+          background: #e5e7eb;
+          z-index: 1;
+        }
+        .stepper-line.completed {
+          background: #10b981;
+        }
+        .stepper-item:last-child .stepper-line {
+          display: none;
+        }
+      "))
+    )
+  ),
 
   # Access Code Page
   nav_panel(
     title = NULL,
     value = "access",
-
-    gmed::load_gmed_styles(theme = "slucare"),
-
-  # Add stepper CSS
-  tags$head(
-    tags$style(HTML("
-      .stepper-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        position: relative;
-      }
-      .stepper-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        flex: 1;
-        position: relative;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-      .stepper-item:hover .stepper-circle {
-        transform: scale(1.1);
-      }
-      .stepper-circle {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 0.875rem;
-        margin-bottom: 0.5rem;
-        transition: all 0.3s ease;
-        z-index: 2;
-        position: relative;
-      }
-      .stepper-circle.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-      }
-      .stepper-circle.completed {
-        background: #10b981;
-        color: white;
-      }
-      .stepper-circle.incomplete {
-        background: #e5e7eb;
-        color: #9ca3af;
-        border: 2px solid #d1d5db;
-      }
-      .stepper-label {
-        font-size: 0.75rem;
-        text-align: center;
-        max-width: 100px;
-        line-height: 1.2;
-        color: #6b7280;
-        font-weight: 500;
-      }
-      .stepper-label.active {
-        color: #667eea;
-        font-weight: 600;
-      }
-      .stepper-line {
-        position: absolute;
-        top: 18px;
-        left: 50%;
-        right: -50%;
-        height: 2px;
-        background: #e5e7eb;
-        z-index: 1;
-      }
-      .stepper-line.completed {
-        background: #10b981;
-      }
-      .stepper-item:last-child .stepper-line {
-        display: none;
-      }
-    "))
-  ),
 
 
     # Loading overlay (shown on startup)
