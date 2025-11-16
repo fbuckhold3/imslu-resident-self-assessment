@@ -39,17 +39,17 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       }
     })
 
-    # Prepare combined assessment + questions data with redcap_repeat_instrument
-    # This is what the wrapper expects - both forms combined
+    # Prepare combined assessment + questions data
+    # Need BOTH redcap_repeat_instrument AND source_form columns
     combined_assessment_questions <- reactive({
       req(rdm_data())
 
       app_data <- rdm_data()
 
-      # Bind assessment and questions, preserving redcap_repeat_instrument
+      # Add source_form while preserving redcap_repeat_instrument
       combined <- bind_rows(
-        app_data$all_forms$assessment,
-        app_data$all_forms$questions
+        app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
+        app_data$all_forms$questions %>% mutate(source_form = "questions")
       )
 
       return(combined)
