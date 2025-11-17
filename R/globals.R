@@ -60,6 +60,7 @@ source("R/modules/wrappers/mod_goals_wrapper.R")
 # Source individual modules
 source("R/modules/mod_program_feedback.R")
 source("R/modules/mod_learning.R")
+source("R/modules/mod_assessment_detail_custom.R")
 source("R/goal_mod.R")
 
 

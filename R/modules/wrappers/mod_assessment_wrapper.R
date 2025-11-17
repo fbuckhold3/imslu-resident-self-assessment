@@ -1,24 +1,33 @@
 #' Assessment Review Wrapper Module UI
-#' 
+#'
 #' Wrapper for all assessment visualizations
 #' @param id Module namespace
+#' @param use_custom_detail Use custom detail viz instead of gmed (default: TRUE)
 #' @export
-mod_assessment_wrapper_ui <- function(id) {
+mod_assessment_wrapper_ui <- function(id, use_custom_detail = TRUE) {
   ns <- NS(id)
-  
-  # Just call the gmed wrapper
-  gmed::mod_assessment_viz_wrapper_ui(ns("viz_wrapper"))
+
+  tagList(
+    # Call the gmed wrapper (without detail viz if using custom)
+    gmed::mod_assessment_viz_wrapper_ui(ns("viz_wrapper")),
+
+    # Add custom detail viz if requested
+    if (use_custom_detail) {
+      mod_assessment_detail_custom_ui(ns("custom_detail"))
+    }
+  )
 }
 
 #' Assessment Review Wrapper Module Server
-#' 
+#'
 #' @param id Module namespace
 #' @param rdm_data Reactive returning app data structure from load_rdm_complete
 #' @param record_id Reactive returning resident record_id
 #' @param period Reactive returning period number (not used but kept for consistency)
 #' @param data_dict Data dictionary
+#' @param use_custom_detail Use custom detail viz instead of gmed (default: TRUE)
 #' @export
-mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_dict) {
+mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_dict, use_custom_detail = TRUE) {
   moduleServer(id, function(input, output, session) {
     
     # Get resident name separately
@@ -88,5 +97,15 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       resident_name = resident_name,
       resident_data = resident_info_data
     )
+
+    # Initialize custom detail viz if requested
+    if (use_custom_detail) {
+      mod_assessment_detail_custom_server(
+        "custom_detail",
+        rdm_data = combined_assessment_questions,
+        record_id = record_id,
+        data_dict = data_dict
+      )
+    }
   })
 }
