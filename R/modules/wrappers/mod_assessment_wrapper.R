@@ -39,6 +39,17 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       }
     })
 
+    # Get resident data for CC completion
+    resident_info_data <- reactive({
+      req(rdm_data(), record_id())
+
+      app_data <- rdm_data()
+
+      app_data$residents %>%
+        dplyr::filter(record_id == !!record_id()) %>%
+        dplyr::slice(1)
+    })
+
     # Prepare combined assessment + questions data
     # Need BOTH redcap_repeat_instrument AND source_form columns
     combined_assessment_questions <- reactive({
@@ -64,7 +75,9 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       record_id = record_id,
       data_dict = data_dict,
       include_questions = TRUE,
-      resident_name = resident_name
+      include_cc_completion = TRUE,
+      resident_name = resident_name,
+      resident_data = resident_info_data
     )
   })
 }
