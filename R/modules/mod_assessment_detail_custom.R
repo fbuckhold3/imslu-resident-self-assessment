@@ -228,8 +228,8 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
       })
     })
 
-    # Render visualization for selected category
-    output$viz_output <- renderUI({
+    # Prepare data for visualization
+    current_category_data <- reactive({
       req(selected_category(), assessment_categories(), resident_assessments())
 
       cat_key <- selected_category()
@@ -243,7 +243,51 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
         dplyr::filter(dplyr::if_any(dplyr::all_of(cat_info$fields),
                                    ~!is.na(.) & as.character(.) != "" & as.character(.) != "0"))
 
-      if (nrow(category_data) == 0) {
+      list(
+        data = category_data,
+        cat_info = cat_info,
+        has_data = nrow(category_data) > 0,
+        total_assessments = nrow(res_data)
+      )
+    })
+
+    # Render plotly chart
+    output$category_plot <- plotly::renderPlotly({
+      req(current_category_data()$has_data)
+
+      viz_result <- create_scale_visualization_data(
+        current_category_data()$data,
+        current_category_data()$cat_info
+      )
+
+      req(viz_result$has_numeric)
+      viz_result$plot
+    })
+
+    # Render data table
+    output$category_table <- DT::renderDT({
+      req(current_category_data()$has_data)
+
+      viz_result <- create_scale_visualization_data(
+        current_category_data()$data,
+        current_category_data()$cat_info
+      )
+
+      DT::datatable(
+        viz_result$display_data,
+        options = list(pageLength = 10, scrollX = TRUE),
+        rownames = FALSE,
+        colnames = c("Date", "Faculty", "Assessment Item", "Rating")
+      )
+    })
+
+    # Render UI container for visualization
+    output$viz_output <- renderUI({
+      req(current_category_data())
+
+      data_info <- current_category_data()
+
+      if (!data_info$has_data) {
         return(
           div(
             class = "alert alert-info assessment-viz-container",
@@ -251,30 +295,30 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
             strong("No data available for this category yet."),
             br(),
             sprintf("You have %d total assessments, but none have data in the %s fields.",
-                   nrow(res_data), cat_info$name)
+                   data_info$total_assessments, data_info$cat_info$name)
           )
         )
       }
 
       # Create visualization based on category type
-      if (cat_info$type == "numeric_scale") {
-        create_scale_visualization(category_data, cat_info, ns)
-      } else if (cat_info$type == "observation") {
-        create_observation_visualization(category_data, cat_info, ns)
+      if (data_info$cat_info$type == "numeric_scale") {
+        create_scale_visualization_ui(data_info$data, data_info$cat_info, ns)
+      } else if (data_info$cat_info$type == "observation") {
+        create_observation_visualization(data_info$data, data_info$cat_info, ns)
       } else {
         div(
           class = "alert alert-warning assessment-viz-container",
           icon("wrench", class = "me-2"),
-          sprintf("Visualization for %s is under development.", cat_info$name)
+          sprintf("Visualization for %s is under development.", data_info$cat_info$name)
         )
       }
     })
   })
 }
 
-#' Create scale visualization
+#' Process data for scale visualization
 #' @keywords internal
-create_scale_visualization <- function(data, cat_info, ns) {
+create_scale_visualization_data <- function(data, cat_info) {
 
   # Pivot data to long format
   viz_data <- data %>%
@@ -287,13 +331,12 @@ create_scale_visualization <- function(data, cat_info, ns) {
     dplyr::filter(!is.na(value), value != "", value != "0")
 
   if (nrow(viz_data) == 0) {
-    return(
-      div(
-        class = "alert alert-warning assessment-viz-container",
-        icon("info-circle", class = "me-2"),
-        "No valid data found for visualization."
-      )
-    )
+    return(list(
+      has_data = FALSE,
+      has_numeric = FALSE,
+      display_data = data.frame(),
+      plot = NULL
+    ))
   }
 
   # Get field labels from cat_info
@@ -323,7 +366,10 @@ create_scale_visualization <- function(data, cat_info, ns) {
     dplyr::arrange(desc(mean_score))
 
   # Create plotly chart if we have numeric data
-  if (nrow(summary_data) > 0) {
+  plot_obj <- NULL
+  has_numeric <- nrow(summary_data) > 0
+
+  if (has_numeric) {
     plot_obj <- plotly::plot_ly(
       data = summary_data,
       x = ~mean_score,
@@ -342,32 +388,44 @@ create_scale_visualization <- function(data, cat_info, ns) {
         yaxis = list(title = ""),
         margin = list(l = 250)
       )
-
-    chart_output <- plotly::renderPlotly({ plot_obj })
-  } else {
-    chart_output <- NULL
   }
 
-  # Create data table
+  # Create display data
   display_data <- viz_data %>%
     dplyr::select(ass_date, ass_faculty, field_label, value) %>%
     dplyr::arrange(desc(ass_date))
 
-  table_output <- DT::renderDT({
-    DT::datatable(
-      display_data,
-      options = list(pageLength = 10, scrollX = TRUE),
-      rownames = FALSE,
-      colnames = c("Date", "Faculty", "Assessment Item", "Rating")
+  return(list(
+    has_data = TRUE,
+    has_numeric = has_numeric,
+    display_data = display_data,
+    plot = plot_obj,
+    n_assessments = nrow(data)
+  ))
+}
+
+#' Create scale visualization UI
+#' @keywords internal
+create_scale_visualization_ui <- function(data, cat_info, ns) {
+
+  viz_result <- create_scale_visualization_data(data, cat_info)
+
+  if (!viz_result$has_data) {
+    return(
+      div(
+        class = "alert alert-warning assessment-viz-container",
+        icon("info-circle", class = "me-2"),
+        "No valid data found for visualization."
+      )
     )
-  })
+  }
 
   # Return combined UI
   div(
     class = "assessment-viz-container",
-    h5(paste("Total assessments in this category:", nrow(data))),
+    h5(paste("Total assessments in this category:", viz_result$n_assessments)),
 
-    if (!is.null(chart_output)) {
+    if (viz_result$has_numeric) {
       tagList(
         h6(class = "mt-3", "Summary Chart"),
         plotly::plotlyOutput(ns("category_plot"), height = "400px")
