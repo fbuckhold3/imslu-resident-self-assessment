@@ -50,7 +50,7 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
         dplyr::slice(1)
     })
 
-    # Prepare combined assessment + questions data
+    # Prepare combined assessment + questions + faculty evaluation data
     # Need BOTH redcap_repeat_instrument AND source_form columns
     combined_assessment_questions <- reactive({
       req(rdm_data())
@@ -58,10 +58,19 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       app_data <- rdm_data()
 
       # Add source_form while preserving redcap_repeat_instrument
-      combined <- bind_rows(
-        app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
-        app_data$all_forms$questions %>% mutate(source_form = "questions")
-      )
+      # Include faculty_evaluation if it exists
+      if ("faculty_evaluation" %in% names(app_data$all_forms)) {
+        combined <- bind_rows(
+          app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
+          app_data$all_forms$questions %>% mutate(source_form = "questions"),
+          app_data$all_forms$faculty_evaluation %>% mutate(source_form = "faculty_evaluation")
+        )
+      } else {
+        combined <- bind_rows(
+          app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
+          app_data$all_forms$questions %>% mutate(source_form = "questions")
+        )
+      }
 
       return(combined)
     })
