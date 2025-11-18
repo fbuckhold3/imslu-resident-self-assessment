@@ -261,8 +261,11 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
       res_data <- resident_assessments()
 
       # Filter to assessments with data in this category
+      # Include Plus/Delta fields for feedback table
       category_data <- res_data %>%
-        dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(cat_info$fields)) %>%
+        dplyr::select(record_id, ass_date, ass_faculty,
+                     dplyr::any_of(c("ass_level", "ass_specialty", "ass_plus", "ass_delta")),
+                     dplyr::any_of(cat_info$fields)) %>%
         dplyr::filter(dplyr::if_any(dplyr::all_of(cat_info$fields),
                                    ~!is.na(.) & as.character(.) != "" & as.character(.) != "0"))
 
