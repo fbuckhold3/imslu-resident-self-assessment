@@ -8,6 +8,10 @@ mod_assessment_detail_custom_ui <- function(id) {
 
   tagList(
     tags$head(
+      tags$link(
+        rel = "stylesheet",
+        href = "https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+      ),
       tags$style(HTML("
         .assessment-category-btn {
           margin: 5px;
@@ -24,12 +28,31 @@ mod_assessment_detail_custom_ui <- function(id) {
           color: white;
           border-color: #667eea;
         }
+        .assessment-obs-btn {
+          margin: 3px;
+          font-size: 0.9rem;
+          transition: all 0.3s ease;
+        }
+        .assessment-obs-btn:hover {
+          transform: scale(1.05);
+        }
+        .assessment-obs-btn.active {
+          background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+          color: white;
+          border-color: #17a2b8;
+        }
         .assessment-viz-container {
           background: white;
           padding: 20px;
           border-radius: 8px;
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
           margin-top: 20px;
+        }
+        .obs-subtype-container {
+          animation-duration: 0.5s;
+        }
+        .obs-viz-content {
+          animation-duration: 0.4s;
         }
       "))
     ),
@@ -251,9 +274,10 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
       )
     })
 
-    # Render plotly chart
+    # Render plotly chart for scale categories
     output$category_plot <- plotly::renderPlotly({
       req(current_category_data()$has_data)
+      req(current_category_data()$cat_info$type == "numeric_scale")
 
       viz_result <- create_scale_visualization_data(
         current_category_data()$data,
@@ -264,21 +288,156 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
       viz_result$plot
     })
 
-    # Render data table
-    output$category_table <- DT::renderDT({
-      req(current_category_data()$has_data)
+    # === OBSERVATION HANDLING ===
 
-      viz_result <- create_scale_visualization_data(
-        current_category_data()$data,
-        current_category_data()$cat_info
+    # Track selected observation sub-type
+    selected_obs_type <- reactiveVal(NULL)
+
+    # Detect observation sub-types dynamically
+    observation_subtypes <- reactive({
+      req(current_category_data()$has_data)
+      req(current_category_data()$cat_info$type == "observation")
+
+      cat_info <- current_category_data()$cat_info
+
+      # Extract sub-types from field names (pattern: ass_obs_{subtype}_{field})
+      all_obs_fields <- cat_info$fields
+      subtypes_raw <- unique(gsub("^ass_obs_([^_]+)_.*$", "\\1", all_obs_fields))
+
+      # Build subtype list with fields
+      subtype_list <- lapply(subtypes_raw, function(st) {
+        fields <- all_obs_fields[grepl(paste0("^ass_obs_", st, "_"), all_obs_fields)]
+
+        # Get field info for these fields
+        field_info <- cat_info$field_info %>%
+          dplyr::filter(field_name %in% fields)
+
+        list(
+          key = st,
+          name = format_obs_subtype_name(st),
+          fields = fields,
+          field_info = field_info
+        )
+      })
+
+      names(subtype_list) <- subtypes_raw
+      subtype_list
+    })
+
+    # Render observation sub-type buttons
+    output$obs_subtype_buttons <- renderUI({
+      req(observation_subtypes())
+
+      obs_types <- observation_subtypes()
+      data <- current_category_data()$data
+
+      buttons <- lapply(names(obs_types), function(st) {
+        obs_info <- obs_types[[st]]
+
+        # Count assessments with this sub-type
+        count <- data %>%
+          dplyr::select(dplyr::any_of(obs_info$fields)) %>%
+          dplyr::filter(dplyr::if_any(dplyr::everything(),
+                                     ~!is.na(.) & as.character(.) != "")) %>%
+          nrow()
+
+        actionButton(
+          ns(paste0("obs_", st)),
+          paste0(obs_info$name, " (", count, ")"),
+          class = if (!is.null(selected_obs_type()) && selected_obs_type() == st)
+            "btn btn-sm assessment-obs-btn active btn-info"
+          else "btn btn-sm assessment-obs-btn btn-outline-info"
+        )
+      })
+
+      div(
+        class = "obs-subtype-container animate__animated animate__fadeInDown",
+        style = "margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 8px;",
+        h6(class = "mb-2", icon("stethoscope"), "Select Observation Type:"),
+        div(class = "d-flex flex-wrap gap-2", buttons)
       )
+    })
+
+    # Track observation sub-type button clicks
+    observe({
+      obs_types <- observation_subtypes()
+      if (is.null(obs_types)) return()
+
+      lapply(names(obs_types), function(st) {
+        observeEvent(input[[paste0("obs_", st)]], {
+          selected_obs_type(st)
+        })
+      })
+    })
+
+    # Render observation plotly chart (for numeric fields)
+    output$obs_plot <- plotly::renderPlotly({
+      req(selected_obs_type(), observation_subtypes(), current_category_data()$has_data)
+
+      obs_type <- selected_obs_type()
+      obs_info <- observation_subtypes()[[obs_type]]
+      data <- current_category_data()$data
+
+      # Filter to assessments with this sub-type
+      subtype_data <- data %>%
+        dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(obs_info$fields)) %>%
+        dplyr::filter(dplyr::if_any(dplyr::all_of(obs_info$fields),
+                                   ~!is.na(.) & as.character(.) != ""))
+
+      viz_result <- create_observation_viz_data(subtype_data, obs_info)
+      req(viz_result$has_numeric)
+      viz_result$plot
+    })
+
+    # Render observation data table (for text fields only)
+    output$obs_table <- DT::renderDT({
+      req(selected_obs_type(), observation_subtypes(), current_category_data()$has_data)
+
+      obs_type <- selected_obs_type()
+      obs_info <- observation_subtypes()[[obs_type]]
+      data <- current_category_data()$data
+
+      # Filter to assessments with this sub-type
+      subtype_data <- data %>%
+        dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(obs_info$fields)) %>%
+        dplyr::filter(dplyr::if_any(dplyr::all_of(obs_info$fields),
+                                   ~!is.na(.) & as.character(.) != ""))
+
+      viz_result <- create_observation_viz_data(subtype_data, obs_info)
+      req(viz_result$has_text)
 
       DT::datatable(
-        viz_result$display_data,
-        options = list(pageLength = 10, scrollX = TRUE),
+        viz_result$text_display_data,
+        options = list(pageLength = 10, scrollX = TRUE, scrollY = "300px"),
         rownames = FALSE,
-        colnames = c("Date", "Faculty", "Assessment Item", "Rating")
+        escape = FALSE
       )
+    })
+
+    # Render observation visualization area
+    output$obs_viz_area <- renderUI({
+      req(selected_obs_type(), observation_subtypes(), current_category_data()$has_data)
+
+      obs_type <- selected_obs_type()
+      obs_info <- observation_subtypes()[[obs_type]]
+      data <- current_category_data()$data
+
+      # Filter to assessments with this sub-type
+      subtype_data <- data %>%
+        dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(obs_info$fields)) %>%
+        dplyr::filter(dplyr::if_any(dplyr::all_of(obs_info$fields),
+                                   ~!is.na(.) & as.character(.) != ""))
+
+      if (nrow(subtype_data) == 0) {
+        return(
+          div(
+            class = "alert alert-info animate__animated animate__fadeIn mt-3",
+            icon("info-circle"), " No data for this observation type yet."
+          )
+        )
+      }
+
+      create_observation_subtype_viz(subtype_data, obs_info, ns)
     })
 
     # Render UI container for visualization
@@ -420,31 +579,203 @@ create_scale_visualization_ui <- function(data, cat_info, ns) {
     )
   }
 
-  # Return combined UI
+  # Return chart only (no table)
   div(
     class = "assessment-viz-container",
     h5(paste("Total assessments in this category:", viz_result$n_assessments)),
 
     if (viz_result$has_numeric) {
-      tagList(
-        h6(class = "mt-3", "Summary Chart"),
-        plotly::plotlyOutput(ns("category_plot"), height = "400px")
+      plotly::plotlyOutput(ns("category_plot"), height = "400px")
+    } else {
+      div(
+        class = "alert alert-info mt-3",
+        icon("info-circle"), " No numeric data available for charting."
       )
-    },
-
-    h6(class = "mt-4", "Detailed Data"),
-    DT::DTOutput(ns("category_table"))
+    }
   )
 }
 
-#' Create observation visualization
+#' Create observation visualization with sub-type selection
 #' @keywords internal
 create_observation_visualization <- function(data, cat_info, ns) {
   div(
-    class = "alert alert-info assessment-viz-container",
-    icon("info-circle", class = "me-2"),
-    "Observation visualization coming soon. For now, use the detailed data table.",
-    br(), br(),
-    sprintf("You have %d observation assessments.", nrow(data))
+    class = "assessment-viz-container animate__animated animate__fadeIn",
+    h5(paste("Total observation assessments:", nrow(data))),
+
+    # Sub-type selection buttons (rendered by server)
+    uiOutput(ns("obs_subtype_buttons")),
+
+    # Visualization area (chart and/or table based on selection)
+    uiOutput(ns("obs_viz_area"))
+  )
+}
+
+#' Format observation sub-type name
+#' @keywords internal
+format_obs_subtype_name <- function(key) {
+  name_map <- c(
+    "pe" = "Physical Exam",
+    "pres" = "Presentations",
+    "writehp" = "Written H&P",
+    "proc" = "Procedures",
+    "counsel" = "Counseling",
+    "handoff" = "Handoffs",
+    "profess" = "Professionalism"
+  )
+
+  if (key %in% names(name_map)) {
+    return(name_map[[key]])
+  }
+
+  # Default: capitalize and clean up
+  gsub("_", " ", tools::toTitleCase(key))
+}
+
+#' Process observation data for visualization
+#' @keywords internal
+create_observation_viz_data <- function(data, obs_info) {
+  # Pivot data to long format
+  viz_data <- data %>%
+    dplyr::select(record_id, ass_date, ass_faculty, dplyr::all_of(obs_info$fields)) %>%
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(obs_info$fields),
+      names_to = "field",
+      values_to = "value"
+    ) %>%
+    dplyr::filter(!is.na(value), value != "")
+
+  if (nrow(viz_data) == 0) {
+    return(list(
+      has_data = FALSE,
+      has_numeric = FALSE,
+      has_text = FALSE,
+      plot = NULL,
+      text_display_data = data.frame()
+    ))
+  }
+
+  # Get field labels and types
+  field_labels <- setNames(
+    obs_info$field_info$field_label,
+    obs_info$field_info$field_name
+  )
+
+  field_types <- setNames(
+    obs_info$field_info$field_type,
+    obs_info$field_info$field_name
+  )
+
+  # Add metadata
+  viz_data <- viz_data %>%
+    dplyr::mutate(
+      field_label = field_labels[field],
+      field_type = field_types[field],
+      value_numeric = suppressWarnings(as.numeric(value))
+    )
+
+  # Separate numeric and text fields
+  numeric_data <- viz_data %>%
+    dplyr::filter(!is.na(value_numeric), !field_type %in% c("notes", "text"))
+
+  text_data <- viz_data %>%
+    dplyr::filter(is.na(value_numeric) | field_type %in% c("notes", "text"))
+
+  # Create plot for numeric data
+  plot_obj <- NULL
+  has_numeric <- nrow(numeric_data) > 0
+
+  if (has_numeric) {
+    summary_data <- numeric_data %>%
+      dplyr::group_by(field_label) %>%
+      dplyr::summarise(
+        mean_score = mean(value_numeric, na.rm = TRUE),
+        median_score = median(value_numeric, na.rm = TRUE),
+        n_assessments = dplyr::n(),
+        .groups = "drop"
+      ) %>%
+      dplyr::arrange(desc(mean_score))
+
+    plot_obj <- plotly::plot_ly(
+      data = summary_data,
+      x = ~mean_score,
+      y = ~reorder(field_label, mean_score),
+      type = "bar",
+      orientation = "h",
+      marker = list(color = "#17a2b8"),
+      text = ~paste0("Mean: ", round(mean_score, 2),
+                    "<br>Median: ", round(median_score, 2),
+                    "<br>N: ", n_assessments),
+      hoverinfo = "text"
+    ) %>%
+      plotly::layout(
+        title = list(text = paste("Ratings -", obs_info$name), x = 0),
+        xaxis = list(title = "Average Score"),
+        yaxis = list(title = ""),
+        margin = list(l = 250)
+      )
+  }
+
+  # Create table data for text fields
+  text_display_data <- data.frame()
+  has_text <- nrow(text_data) > 0
+
+  if (has_text) {
+    text_display_data <- text_data %>%
+      dplyr::select(ass_date, ass_faculty, field_label, value) %>%
+      dplyr::arrange(desc(ass_date))
+  }
+
+  return(list(
+    has_data = TRUE,
+    has_numeric = has_numeric,
+    has_text = has_text,
+    plot = plot_obj,
+    text_display_data = text_display_data,
+    n_assessments = nrow(data)
+  ))
+}
+
+#' Render observation visualization area (called from server via uiOutput)
+#' This is rendered in the server's renderUI for obs_viz_area
+#' @keywords internal
+create_observation_subtype_viz <- function(data, obs_info, ns) {
+  viz_result <- create_observation_viz_data(data, obs_info)
+
+  if (!viz_result$has_data) {
+    return(
+      div(
+        class = "alert alert-info animate__animated animate__fadeIn mt-3",
+        icon("info-circle"), " No data available for this observation type."
+      )
+    )
+  }
+
+  div(
+    class = "obs-viz-content animate__animated animate__fadeIn",
+    style = "margin-top: 20px;",
+
+    # Show chart if numeric data exists
+    if (viz_result$has_numeric) {
+      div(
+        class = "mb-4",
+        plotly::plotlyOutput(ns("obs_plot"), height = "400px")
+      )
+    },
+
+    # Show table if text data exists
+    if (viz_result$has_text) {
+      div(
+        h6(icon("comment-alt"), " Narrative Comments"),
+        DT::DTOutput(ns("obs_table"))
+      )
+    },
+
+    # If neither, show message
+    if (!viz_result$has_numeric && !viz_result$has_text) {
+      div(
+        class = "alert alert-warning",
+        icon("exclamation-triangle"), " No displayable data for this type."
+      )
+    }
   )
 }
