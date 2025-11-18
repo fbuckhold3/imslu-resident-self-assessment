@@ -8,10 +8,21 @@ mod_assessment_wrapper_ui <- function(id, use_custom_detail = TRUE) {
   ns <- NS(id)
 
   tagList(
-    # Call the gmed wrapper (without detail viz if using custom)
-    gmed::mod_assessment_viz_wrapper_ui(ns("viz_wrapper")),
+    # Call individual gmed modules instead of full wrapper to avoid duplicate detail viz
 
-    # Add custom detail viz if requested
+    # Plus/Delta feedback table
+    gmed::mod_plus_delta_table_ui(ns("plus_delta"), title = "Recent Feedback"),
+
+    # Assessment progress charts
+    gmed::assessment_viz_ui(ns("charts"), title = "Assessment Progress"),
+
+    # CC Completion Status
+    gmed::mod_cc_completion_ui(ns("cc_completion")),
+
+    # Questions/conference attendance
+    gmed::mod_questions_viz_ui(ns("questions"), title = "Conference Attendance by Rotation"),
+
+    # Add custom detail viz (replaces gmed's detail viz to avoid duplication)
     if (use_custom_detail) {
       mod_assessment_detail_custom_ui(ns("custom_detail"))
     }
@@ -100,21 +111,40 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       return(combined)
     })
 
-    # Call the gmed wrapper
-    # Pass combined data that has both assessment and questions with redcap_repeat_instrument
-    gmed::mod_assessment_viz_wrapper_server(
-      "viz_wrapper",
-      rdm_data = combined_data,
-      rdm_data_raw = raw_assessment_data,
+    # Call individual gmed modules (instead of wrapper to avoid duplicate detail viz)
+
+    # Plus/Delta table
+    gmed::mod_plus_delta_table_server(
+      "plus_delta",
+      rdm_data = raw_assessment_data,
+      record_id = record_id
+    )
+
+    # Assessment charts
+    gmed::assessment_viz_server(
+      "charts",
+      data = combined_data,
       record_id = record_id,
-      data_dict = data_dict,
-      include_questions = TRUE,
-      include_cc_completion = TRUE,
-      resident_name = resident_name,
+      resident_name = resident_name
+    )
+
+    # CC Completion Status
+    gmed::mod_cc_completion_server(
+      "cc_completion",
+      rdm_data = combined_data,
+      record_id = record_id,
       resident_data = resident_info_data
     )
 
-    # Initialize custom detail viz if requested
+    # Questions/conference attendance
+    gmed::mod_questions_viz_server(
+      "questions",
+      data = combined_data,
+      record_id = record_id,
+      data_dict = data_dict
+    )
+
+    # Initialize custom detail viz (replaces gmed's detail viz to avoid duplication)
     if (use_custom_detail) {
       mod_assessment_detail_custom_server(
         "custom_detail",
