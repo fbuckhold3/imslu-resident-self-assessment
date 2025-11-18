@@ -69,9 +69,25 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
         dplyr::slice(1)
     })
 
+    # Get raw assessment data for table display
+    raw_assessment_data <- reactive({
+      req(rdm_data())
+
+      app_data <- rdm_data()
+
+      # Return the assessment data from the data structure
+      if ("assessment" %in% names(app_data)) {
+        return(app_data$assessment)
+      } else if ("all_forms" %in% names(app_data) && "assessment" %in% names(app_data$all_forms)) {
+        return(app_data$all_forms$assessment)
+      } else {
+        return(data.frame())  # Return empty df if no assessment data
+      }
+    })
+
     # Prepare combined assessment + questions + faculty evaluation data
     # Need BOTH redcap_repeat_instrument AND source_form columns
-    combined_assessment_questions <- reactive({
+    combined_data <- reactive({
       req(rdm_data())
 
       app_data <- rdm_data()
