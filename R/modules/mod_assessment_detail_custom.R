@@ -290,61 +290,74 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
 
     # === OBSERVATION HANDLING ===
 
-    # Track selected observation sub-type
+    # Track selected observation type
     selected_obs_type <- reactiveVal(NULL)
 
-    # Detect observation sub-types dynamically
-    observation_subtypes <- reactive({
+    # Detect observation types from ass_obs_type field
+    observation_types <- reactive({
       req(current_category_data()$has_data)
       req(current_category_data()$cat_info$type == "observation")
 
+      data <- current_category_data()$data
       cat_info <- current_category_data()$cat_info
 
-      # Extract sub-types from field names (pattern: ass_obs_{subtype}_{field})
-      all_obs_fields <- cat_info$fields
-      subtypes_raw <- unique(gsub("^ass_obs_([^_]+)_.*$", "\\1", all_obs_fields))
+      # Get unique observation types from ass_obs_type field
+      obs_type_values <- data %>%
+        dplyr::filter(!is.na(ass_obs_type), ass_obs_type != "") %>%
+        dplyr::pull(ass_obs_type) %>%
+        unique() %>%
+        sort()
 
-      # Build subtype list with fields
-      subtype_list <- lapply(subtypes_raw, function(st) {
-        fields <- all_obs_fields[grepl(paste0("^ass_obs_", st, "_"), all_obs_fields)]
+      # Map observation type codes to names
+      obs_type_names <- c(
+        "1" = "Clinical Decision Making",
+        "2" = "Advance Care Planning",
+        "3" = "Educational Session",
+        "4" = "Physical Exam",
+        "5" = "Presentation",
+        "6" = "Written H&P",
+        "7" = "Daily Notes",
+        "8" = "Patient Discharge",
+        "9" = "Patient / Family Counseling",
+        "10" = "Supervision of Intern/Acting Intern",
+        "11" = "Procedure",
+        "12" = "Multi-D Rounds",
+        "13" = "Emergency Condition (Rapid/Code)"
+      )
 
-        # Get field info for these fields
-        field_info <- cat_info$field_info %>%
-          dplyr::filter(field_name %in% fields)
-
+      # Build list of available types
+      type_list <- lapply(obs_type_values, function(type_code) {
         list(
-          key = st,
-          name = format_obs_subtype_name(st),
-          fields = fields,
-          field_info = field_info
+          code = type_code,
+          name = obs_type_names[[as.character(type_code)]],
+          fields = cat_info$fields,
+          field_info = cat_info$field_info
         )
       })
 
-      names(subtype_list) <- subtypes_raw
-      subtype_list
+      names(type_list) <- obs_type_values
+      type_list
     })
 
-    # Render observation sub-type buttons
+    # Render observation type buttons
     output$obs_subtype_buttons <- renderUI({
-      req(observation_subtypes())
+      req(observation_types())
 
-      obs_types <- observation_subtypes()
+      obs_types <- observation_types()
       data <- current_category_data()$data
 
-      buttons <- lapply(names(obs_types), function(st) {
-        obs_info <- obs_types[[st]]
+      buttons <- lapply(names(obs_types), function(type_code) {
+        type_info <- obs_types[[type_code]]
 
-        # Count assessments with this sub-type
+        # Count assessments of this type
         count <- data %>%
-          dplyr::select(dplyr::any_of(obs_info$fields)) %>%
-          dplyr::filter(dplyr::if_any(dplyr::everything(),
-                                     ~!is.na(.) & as.character(.) != "")) %>%
+          dplyr::filter(ass_obs_type == type_code) %>%
           nrow()
 
         actionButton(
-          ns(paste0("obs_", st)),
-          paste0(obs_info$name, " (", count, ")"),
-          class = if (!is.null(selected_obs_type()) && selected_obs_type() == st)
+          ns(paste0("obs_", type_code)),
+          paste0(type_info$name, " (", count, ")"),
+          class = if (!is.null(selected_obs_type()) && selected_obs_type() == type_code)
             "btn btn-sm assessment-obs-btn active btn-info"
           else "btn btn-sm assessment-obs-btn btn-outline-info"
         )
@@ -358,52 +371,48 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
       )
     })
 
-    # Track observation sub-type button clicks
+    # Track observation type button clicks
     observe({
-      obs_types <- observation_subtypes()
+      obs_types <- observation_types()
       if (is.null(obs_types)) return()
 
-      lapply(names(obs_types), function(st) {
-        observeEvent(input[[paste0("obs_", st)]], {
-          selected_obs_type(st)
+      lapply(names(obs_types), function(type_code) {
+        observeEvent(input[[paste0("obs_", type_code)]], {
+          selected_obs_type(type_code)
         })
       })
     })
 
     # Render observation plotly chart (for numeric fields)
     output$obs_plot <- plotly::renderPlotly({
-      req(selected_obs_type(), observation_subtypes(), current_category_data()$has_data)
+      req(selected_obs_type(), observation_types(), current_category_data()$has_data)
 
-      obs_type <- selected_obs_type()
-      obs_info <- observation_subtypes()[[obs_type]]
+      type_code <- selected_obs_type()
+      type_info <- observation_types()[[type_code]]
       data <- current_category_data()$data
 
-      # Filter to assessments with this sub-type
-      subtype_data <- data %>%
-        dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(obs_info$fields)) %>%
-        dplyr::filter(dplyr::if_any(dplyr::all_of(obs_info$fields),
-                                   ~!is.na(.) & as.character(.) != ""))
+      # Filter to assessments of this observation type
+      type_data <- data %>%
+        dplyr::filter(ass_obs_type == type_code)
 
-      viz_result <- create_observation_viz_data(subtype_data, obs_info)
+      viz_result <- create_observation_viz_data(type_data, type_info)
       req(viz_result$has_numeric)
       viz_result$plot
     })
 
     # Render observation data table (for text fields only)
     output$obs_table <- DT::renderDT({
-      req(selected_obs_type(), observation_subtypes(), current_category_data()$has_data)
+      req(selected_obs_type(), observation_types(), current_category_data()$has_data)
 
-      obs_type <- selected_obs_type()
-      obs_info <- observation_subtypes()[[obs_type]]
+      type_code <- selected_obs_type()
+      type_info <- observation_types()[[type_code]]
       data <- current_category_data()$data
 
-      # Filter to assessments with this sub-type
-      subtype_data <- data %>%
-        dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(obs_info$fields)) %>%
-        dplyr::filter(dplyr::if_any(dplyr::all_of(obs_info$fields),
-                                   ~!is.na(.) & as.character(.) != ""))
+      # Filter to assessments of this observation type
+      type_data <- data %>%
+        dplyr::filter(ass_obs_type == type_code)
 
-      viz_result <- create_observation_viz_data(subtype_data, obs_info)
+      viz_result <- create_observation_viz_data(type_data, type_info)
       req(viz_result$has_text)
 
       DT::datatable(
@@ -416,19 +425,17 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
 
     # Render observation visualization area
     output$obs_viz_area <- renderUI({
-      req(selected_obs_type(), observation_subtypes(), current_category_data()$has_data)
+      req(selected_obs_type(), observation_types(), current_category_data()$has_data)
 
-      obs_type <- selected_obs_type()
-      obs_info <- observation_subtypes()[[obs_type]]
+      type_code <- selected_obs_type()
+      type_info <- observation_types()[[type_code]]
       data <- current_category_data()$data
 
-      # Filter to assessments with this sub-type
-      subtype_data <- data %>%
-        dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(obs_info$fields)) %>%
-        dplyr::filter(dplyr::if_any(dplyr::all_of(obs_info$fields),
-                                   ~!is.na(.) & as.character(.) != ""))
+      # Filter to assessments of this observation type
+      type_data <- data %>%
+        dplyr::filter(ass_obs_type == type_code)
 
-      if (nrow(subtype_data) == 0) {
+      if (nrow(type_data) == 0) {
         return(
           div(
             class = "alert alert-info animate__animated animate__fadeIn mt-3",
@@ -437,7 +444,7 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
         )
       }
 
-      create_observation_subtype_viz(subtype_data, obs_info, ns)
+      create_observation_subtype_viz(type_data, type_info, ns)
     })
 
     # Render UI container for visualization
@@ -633,16 +640,48 @@ format_obs_subtype_name <- function(key) {
 
 #' Process observation data for visualization
 #' @keywords internal
-create_observation_viz_data <- function(data, obs_info) {
+create_observation_viz_data <- function(data, type_info) {
+
+  if (nrow(data) == 0) {
+    return(list(
+      has_data = FALSE,
+      has_numeric = FALSE,
+      has_text = FALSE,
+      plot = NULL,
+      text_display_data = data.frame(),
+      n_assessments = 0
+    ))
+  }
+
+  # Get observation fields that exist in the data
+  obs_fields <- type_info$fields[type_info$fields %in% names(data)]
+
+  # Filter to fields that are NOT metadata (date, faculty, type, etc.)
+  obs_value_fields <- obs_fields[!obs_fields %in% c("ass_obs_type", "ass_date", "ass_faculty",
+                                                      "ass_level", "ass_specialty", "record_id",
+                                                      "redcap_repeat_instrument", "redcap_repeat_instance",
+                                                      "source_form")]
+
+  if (length(obs_value_fields) == 0) {
+    return(list(
+      has_data = FALSE,
+      has_numeric = FALSE,
+      has_text = FALSE,
+      plot = NULL,
+      text_display_data = data.frame(),
+      n_assessments = nrow(data)
+    ))
+  }
+
   # Pivot data to long format
   viz_data <- data %>%
-    dplyr::select(record_id, ass_date, ass_faculty, dplyr::all_of(obs_info$fields)) %>%
+    dplyr::select(record_id, ass_date, ass_faculty, dplyr::any_of(obs_value_fields)) %>%
     tidyr::pivot_longer(
-      cols = dplyr::all_of(obs_info$fields),
+      cols = dplyr::any_of(obs_value_fields),
       names_to = "field",
       values_to = "value"
     ) %>%
-    dplyr::filter(!is.na(value), value != "")
+    dplyr::filter(!is.na(value), value != "", value != "0")
 
   if (nrow(viz_data) == 0) {
     return(list(
@@ -650,19 +689,20 @@ create_observation_viz_data <- function(data, obs_info) {
       has_numeric = FALSE,
       has_text = FALSE,
       plot = NULL,
-      text_display_data = data.frame()
+      text_display_data = data.frame(),
+      n_assessments = nrow(data)
     ))
   }
 
   # Get field labels and types
   field_labels <- setNames(
-    obs_info$field_info$field_label,
-    obs_info$field_info$field_name
+    type_info$field_info$field_label,
+    type_info$field_info$field_name
   )
 
   field_types <- setNames(
-    obs_info$field_info$field_type,
-    obs_info$field_info$field_name
+    type_info$field_info$field_type,
+    type_info$field_info$field_name
   )
 
   # Add metadata
@@ -708,7 +748,7 @@ create_observation_viz_data <- function(data, obs_info) {
       hoverinfo = "text"
     ) %>%
       plotly::layout(
-        title = list(text = paste("Ratings -", obs_info$name), x = 0),
+        title = list(text = paste("Ratings -", type_info$name), x = 0),
         xaxis = list(title = "Average Score"),
         yaxis = list(title = ""),
         margin = list(l = 250)
@@ -738,8 +778,8 @@ create_observation_viz_data <- function(data, obs_info) {
 #' Render observation visualization area (called from server via uiOutput)
 #' This is rendered in the server's renderUI for obs_viz_area
 #' @keywords internal
-create_observation_subtype_viz <- function(data, obs_info, ns) {
-  viz_result <- create_observation_viz_data(data, obs_info)
+create_observation_subtype_viz <- function(data, type_info, ns) {
+  viz_result <- create_observation_viz_data(data, type_info)
 
   if (!viz_result$has_data) {
     return(
