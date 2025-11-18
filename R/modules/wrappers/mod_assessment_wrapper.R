@@ -139,7 +139,7 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
     # Questions/conference attendance
     gmed::mod_questions_viz_server(
       "questions",
-      data = combined_data,
+      rdm_data = combined_data,
       record_id = record_id,
       data_dict = data_dict
     )
