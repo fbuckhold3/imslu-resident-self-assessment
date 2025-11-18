@@ -8,23 +8,13 @@ mod_assessment_wrapper_ui <- function(id, use_custom_detail = TRUE) {
   ns <- NS(id)
 
   tagList(
-    # gmed visualizations
+    # Call the gmed wrapper (without detail viz if using custom)
     gmed::mod_assessment_viz_wrapper_ui(ns("viz_wrapper")),
 
-    # Add detailed assessment table section
-    div(
-      class = "card mt-4",
-      div(
-        class = "card-header bg-info text-white",
-        h4(class = "mb-0", icon("table", class = "me-2"), "Detailed Assessment Records")
-      ),
-      div(
-        class = "card-body",
-        p(class = "text-muted",
-          "Complete record of all faculty assessments including Plus feedback (what you're doing well) and Delta feedback (areas for growth)."),
-        uiOutput(ns("assessment_table"))
-      )
-    )
+    # Add custom detail viz if requested
+    if (use_custom_detail) {
+      mod_assessment_detail_custom_ui(ns("custom_detail"))
+    }
   )
 }
 
@@ -119,87 +109,19 @@ mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_
       record_id = record_id,
       data_dict = data_dict,
       include_questions = TRUE,
-      resident_name = resident_name
+      include_cc_completion = TRUE,
+      resident_name = resident_name,
+      resident_data = resident_info_data
     )
 
-    # Render detailed assessment table
-    output$assessment_table <- renderUI({
-      req(raw_assessment_data(), record_id())
-
-      # Filter to current resident's assessments
-      resident_assessments <- raw_assessment_data() %>%
-        dplyr::filter(record_id == !!record_id()) %>%
-        dplyr::arrange(desc(ass_date))
-
-      if (nrow(resident_assessments) == 0) {
-        return(
-          div(
-            class = "alert alert-info",
-            icon("info-circle", class = "me-2"),
-            "No assessment records found."
-          )
-        )
-      }
-
-      # Create formatted table with nice column names
-      table_data <- resident_assessments %>%
-        dplyr::select(
-          Date = ass_date,
-          Level = ass_level,
-          Faculty = ass_faculty,
-          Specialty = ass_specialty,
-          `Plus Feedback` = ass_plus,
-          `Delta Feedback` = ass_delta
-        ) %>%
-        dplyr::mutate(
-          # Format date nicely
-          Date = format(as.Date(Date), "%b %d, %Y"),
-          # Replace NA with empty string for better display
-          across(everything(), ~ifelse(is.na(.), "", .))
-        )
-
-      # Render as HTML table with Bootstrap styling
-      div(
-        class = "table-responsive",
-        tags$table(
-          class = "table table-striped table-hover",
-          tags$thead(
-            class = "table-light",
-            tags$tr(
-              lapply(names(table_data), function(col_name) {
-                tags$th(col_name)
-              })
-            )
-          ),
-          tags$tbody(
-            lapply(seq_len(nrow(table_data)), function(row_idx) {
-              tags$tr(
-                lapply(names(table_data), function(col_name) {
-                  cell_value <- table_data[[col_name]][row_idx]
-
-                  # Special formatting for Plus/Delta feedback - show full text
-                  if (col_name %in% c("Plus Feedback", "Delta Feedback")) {
-                    if (nchar(cell_value) > 0) {
-                      tags$td(
-                        style = "white-space: pre-wrap; max-width: 400px;",
-                        cell_value
-                      )
-                    } else {
-                      tags$td(
-                        class = "text-muted",
-                        style = "font-style: italic;",
-                        "(none)"
-                      )
-                    }
-                  } else {
-                    tags$td(cell_value)
-                  }
-                })
-              )
-            })
-          )
-        )
+    # Initialize custom detail viz if requested
+    if (use_custom_detail) {
+      mod_assessment_detail_custom_server(
+        "custom_detail",
+        rdm_data = combined_data,
+        record_id = record_id,
+        data_dict = data_dict
       )
-    })
+    }
   })
 }

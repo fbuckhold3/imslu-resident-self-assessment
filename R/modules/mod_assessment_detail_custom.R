@@ -447,6 +447,119 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
       create_observation_subtype_viz(type_data, type_info, ns)
     })
 
+    # Render Plus/Delta table for current category
+    output$plus_delta_table <- renderUI({
+      req(current_category_data()$has_data)
+
+      data_info <- current_category_data()
+
+      # Get the assessment data with Plus/Delta fields
+      assessment_data <- data_info$data %>%
+        dplyr::select(
+          dplyr::any_of(c("ass_date", "ass_faculty", "ass_level",
+                         "ass_specialty", "ass_plus", "ass_delta"))
+        ) %>%
+        dplyr::filter(!is.na(ass_date)) %>%
+        dplyr::arrange(desc(ass_date))
+
+      if (nrow(assessment_data) == 0) {
+        return(NULL)
+      }
+
+      # Check if there's any Plus or Delta feedback
+      has_feedback <- assessment_data %>%
+        dplyr::filter(
+          (!is.na(ass_plus) & ass_plus != "") |
+          (!is.na(ass_delta) & ass_delta != "")
+        ) %>%
+        nrow() > 0
+
+      if (!has_feedback) {
+        return(
+          div(
+            class = "alert alert-info mt-3",
+            icon("info-circle", class = "me-2"),
+            "No Plus/Delta feedback available for assessments in this category."
+          )
+        )
+      }
+
+      # Create formatted table
+      table_data <- assessment_data %>%
+        dplyr::select(
+          Date = ass_date,
+          Faculty = ass_faculty,
+          Level = ass_level,
+          `Plus Feedback` = ass_plus,
+          `Delta Feedback` = ass_delta
+        ) %>%
+        dplyr::mutate(
+          # Format date nicely
+          Date = format(as.Date(Date), "%b %d, %Y"),
+          # Replace NA with empty string for better display
+          dplyr::across(dplyr::everything(), ~ifelse(is.na(.), "", .))
+        ) %>%
+        # Only show rows with feedback
+        dplyr::filter(`Plus Feedback` != "" | `Delta Feedback` != "")
+
+      if (nrow(table_data) == 0) {
+        return(NULL)
+      }
+
+      # Render as HTML table with Bootstrap styling
+      div(
+        class = "card mt-4",
+        div(
+          class = "card-header bg-info text-white",
+          h5(class = "mb-0", icon("comments", class = "me-2"), "Plus/Delta Feedback")
+        ),
+        div(
+          class = "card-body p-0",
+          div(
+            class = "table-responsive",
+            tags$table(
+              class = "table table-striped table-hover mb-0",
+              tags$thead(
+                class = "table-light",
+                tags$tr(
+                  lapply(names(table_data), function(col_name) {
+                    tags$th(col_name)
+                  })
+                )
+              ),
+              tags$tbody(
+                lapply(seq_len(nrow(table_data)), function(row_idx) {
+                  tags$tr(
+                    lapply(names(table_data), function(col_name) {
+                      cell_value <- table_data[[col_name]][row_idx]
+
+                      # Special formatting for Plus/Delta feedback - show full text
+                      if (col_name %in% c("Plus Feedback", "Delta Feedback")) {
+                        if (nchar(cell_value) > 0) {
+                          tags$td(
+                            style = "white-space: pre-wrap; max-width: 400px;",
+                            cell_value
+                          )
+                        } else {
+                          tags$td(
+                            class = "text-muted",
+                            style = "font-style: italic;",
+                            "(none)"
+                          )
+                        }
+                      } else {
+                        tags$td(cell_value)
+                      }
+                    })
+                  )
+                })
+              )
+            )
+          )
+        )
+      )
+    })
+
     # Render UI container for visualization
     output$viz_output <- renderUI({
       req(current_category_data())
@@ -467,7 +580,7 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
       }
 
       # Create visualization based on category type
-      if (data_info$cat_info$type == "numeric_scale") {
+      viz_ui <- if (data_info$cat_info$type == "numeric_scale") {
         create_scale_visualization_ui(data_info$data, data_info$cat_info, ns)
       } else if (data_info$cat_info$type == "observation") {
         create_observation_visualization(data_info$data, data_info$cat_info, ns)
@@ -478,6 +591,12 @@ mod_assessment_detail_custom_server <- function(id, rdm_data, record_id, data_di
           sprintf("Visualization for %s is under development.", data_info$cat_info$name)
         )
       }
+
+      # Combine visualization with Plus/Delta table
+      tagList(
+        viz_ui,
+        uiOutput(ns("plus_delta_table"))
+      )
     })
   })
 }
