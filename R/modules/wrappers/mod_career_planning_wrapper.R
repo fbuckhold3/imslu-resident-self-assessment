@@ -353,48 +353,116 @@ output$previous_career_display <- renderUI({
     # Handle submission
     observeEvent(input$submit, {
       req(period(), record_id())
-      
+
       # Validate required fields
       if (is.null(input$career_path) || length(input$career_path) == 0) {
         showNotification("Please select at least one career path", type = "error")
         return()
       }
-      
+
       # Only validate fellowship if career path includes "2" (Fellowship)
       if ("2" %in% input$career_path && (is.null(input$fellow) || length(input$fellow) == 0)) {
         showNotification("Please indicate fellowship interest", type = "error")
         return()
       }
-      
+
       if (is.null(input$track)) {
         showNotification("Please indicate if you're interested in program tracks", type = "error")
         return()
       }
-      
-      # Prepare data for submission - FIXED: s_e_well not s_e_wellness
-      submit_data <- list(
-        s_e_well = input$wellness,
-        s_e_career_path = if (!is.null(input$career_path)) paste(input$career_path, collapse = ",") else "",
-        s_e_career_oth = if (!is.null(input$career_path) && "4" %in% input$career_path) input$career_oth else "",
-        s_e_fellow = if (!is.null(input$fellow)) paste(input$fellow, collapse = ",") else "",
-        s_e_fellow_oth = if (!is.null(input$fellow) && "1" %in% input$fellow) input$fellow_oth else "",
-        s_e_track = input$track,
-        s_e_track_type = if (input$track == "1" && !is.null(input$track_type)) {
-          paste(input$track_type, collapse = ",")
-        } else ""
-      )
-      
-      # Submit to REDCap
-      result <- submit_self_eval_data(
+
+      # Convert period to number
+      period_num <- if (is.numeric(period())) {
+        period()
+      } else {
+        # Convert period name to number if needed
+        period_map <- c(
+          "Entering Residency" = 7,
+          "Mid Intern" = 1,
+          "End Intern" = 2,
+          "Mid PGY2" = 3,
+          "End PGY2" = 4,
+          "Mid PGY3" = 5,
+          "Graduating" = 6
+        )
+        period_map[period()]
+      }
+
+      message("=== CAREER PLANNING SUBMISSION ===")
+      message("Period: ", period())
+      message("Period number: ", period_num)
+      message("Record ID: ", record_id())
+
+      # Prepare data for submission - Build data frame with proper checkbox expansion
+      submit_data <- data.frame(
         record_id = record_id(),
-        period = period(),
-        data = submit_data
+        redcap_repeat_instrument = "s_eval",
+        redcap_repeat_instance = period_num,
+        stringsAsFactors = FALSE
       )
-      
+
+      # Add wellness
+      submit_data$s_e_well <- input$wellness %||% ""
+
+      # Add career path checkboxes - EXPAND TO INDIVIDUAL FIELDS
+      # Get all possible values from data dict
+      career_field <- get_field_info("s_e_career_path")
+      career_choices <- parse_choices(get_choices_string(career_field))
+
+      for (code in career_choices) {
+        field_name <- paste0("s_e_career_path___", code)
+        submit_data[[field_name]] <- if (code %in% input$career_path) "1" else "0"
+      }
+
+      # Career path other
+      submit_data$s_e_career_oth <- if ("4" %in% input$career_path) input$career_oth %||% "" else ""
+
+      # Add fellowship checkboxes - EXPAND TO INDIVIDUAL FIELDS
+      fellow_field <- get_field_info("s_e_fellow")
+      fellow_choices <- parse_choices(get_choices_string(fellow_field))
+
+      for (code in fellow_choices) {
+        field_name <- paste0("s_e_fellow___", code)
+        submit_data[[field_name]] <- if (code %in% input$fellow) "1" else "0"
+      }
+
+      # Fellowship other
+      submit_data$s_e_fellow_oth <- if ("1" %in% input$fellow) input$fellow_oth %||% "" else ""
+
+      # Track pursuit
+      submit_data$s_e_track <- input$track %||% "0"
+
+      # Track type checkboxes - EXPAND TO INDIVIDUAL FIELDS
+      track_type_field <- get_field_info("s_e_track_type")
+      track_type_choices <- parse_choices(get_choices_string(track_type_field))
+
+      for (code in track_type_choices) {
+        field_name <- paste0("s_e_track_type___", code)
+        submit_data[[field_name]] <- if (code %in% input$track_type) "1" else "0"
+      }
+
+      message("Submitting to REDCap with ", ncol(submit_data), " fields")
+
+      # Submit to REDCap using REDCapR directly (like Learning module)
+      result <- tryCatch({
+        result_obj <- REDCapR::redcap_write_oneshot(
+          ds = submit_data,
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token
+        )
+
+        if (result_obj$success) {
+          list(success = TRUE, message = "Data saved successfully")
+        } else {
+          list(success = FALSE, message = result_obj$outcome_message)
+        }
+      }, error = function(e) {
+        message("ERROR in submission: ", e$message)
+        list(success = FALSE, message = paste("R error:", e$message))
+      })
+
       if (result$success) {
         showNotification("Wellness and career planning saved successfully!", type = "message")
-        # Trigger app data refresh
-        session$userData$refresh_trigger(session$userData$refresh_trigger() + 1)
       } else {
         showNotification(paste("Error:", result$message), type = "error")
       }
