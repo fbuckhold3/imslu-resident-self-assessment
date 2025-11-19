@@ -309,7 +309,21 @@ ui <- page_navbar(
             )
           ),
           checkboxInput("show_period_debug", "Show Period Debug Info", value = TRUE),
-          
+
+          # Completion Checklist
+          div(
+            class = "card mb-4",
+            div(
+              class = "card-header bg-light",
+              h4(class = "mb-0", icon("clipboard-check"), " Self-Assessment Progress")
+            ),
+            div(
+              class = "card-body",
+              p(class = "text-muted", "Track your progress through the self-assessment modules. Required modules are marked with a star (", icon("star", class = "text-warning"), ")."),
+              mod_completion_checklist_ui("intro_checklist", show_details = TRUE)
+            )
+          ),
+
           # Navigation
           div(
             class = "d-flex justify-content-end mt-4",
@@ -355,28 +369,58 @@ nav_panel(
     div(
       class = "container py-5",
       div(
-        class = "row justify-content-center",
+        class = "row",
         div(
-          class = "col-md-8 text-center",
+          class = "col-lg-10 offset-lg-1",
+
+          # Success message
           div(
-            class = "card shadow-lg",
+            class = "card shadow-lg mb-4",
             div(
-              class = "card-body p-5",
+              class = "card-body p-5 text-center",
               icon("check-circle", class = "fa-4x text-success mb-4"),
-              h2("Self-Assessment Complete!"),  # CHANGED
-p(class = "lead", "Thank you for completing your self-assessment."),
+              h2("Self-Assessment Complete!"),
+              p(class = "lead", "Thank you for completing your self-assessment."),
               hr(),
               p("Your responses have been saved to REDCap."),
-              p("You can close this window or return to the beginning."),
-              div(
-                class = "mt-4",
-                actionButton(
-                  "return_to_start",
-                  "Return to Start",
-                  class = "btn-primary btn-lg",
-                  icon = icon("home")
-                )
-              )
+              p("Review your submitted data below.")
+            )
+          ),
+
+          # Completion checklist
+          div(
+            class = "card mb-4",
+            div(
+              class = "card-header bg-success text-white",
+              h4(class = "mb-0", icon("clipboard-check"), " Completion Status")
+            ),
+            div(
+              class = "card-body",
+              mod_completion_checklist_ui("completion_checklist", show_details = TRUE)
+            )
+          ),
+
+          # ILP Summary
+          div(
+            class = "card mb-4",
+            div(
+              class = "card-header bg-primary text-white",
+              h4(class = "mb-0", icon("file-medical-alt"), " Your Individualized Learning Plan (ILP)")
+            ),
+            div(
+              class = "card-body",
+              mod_ilp_summary_ui("ilp_summary")
+            )
+          ),
+
+          # Navigation
+          div(
+            class = "mt-4 text-center",
+            actionButton(
+              "return_to_start",
+              "Return to Introduction",
+              class = "btn-primary btn-lg",
+              icon = icon("home")
             )
           )
         )

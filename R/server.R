@@ -215,7 +215,16 @@ active_period <- reactive({
   # ============================================================================
   # INTRO PAGE OUTPUTS
   # ============================================================================
-  
+
+  # Initialize intro page checklist
+  mod_completion_checklist_server(
+    "intro_checklist",
+    rdm_data = reactive(values$app_data),
+    record_id = reactive(values$current_resident),
+    period = active_period,
+    show_details = TRUE
+  )
+
   output$resident_name_display_intro <- renderText({
     req(values$resident_info)
     values$resident_info$name %||% "Resident"
@@ -637,4 +646,31 @@ observe({
     }
   }
 })
+
+  # ============================================================================
+  # COMPLETION PAGE - Initialize checklist and ILP summary
+  # ============================================================================
+
+  # Completion page checklist
+  mod_completion_checklist_server(
+    "completion_checklist",
+    rdm_data = reactive(values$app_data),
+    record_id = reactive(values$current_resident),
+    period = active_period,
+    show_details = TRUE
+  )
+
+  # ILP Summary
+  mod_ilp_summary_server(
+    "ilp_summary",
+    rdm_data = reactive(values$app_data),
+    record_id = reactive(values$current_resident),
+    period = reactive(active_period()$period_number),
+    data_dict = values$app_data$data_dict
+  )
+
+  # Return to intro from completion page
+  observeEvent(input$return_to_start, {
+    updateNavbarPage(session, "main_nav", selected = "intro")
+  })
 }

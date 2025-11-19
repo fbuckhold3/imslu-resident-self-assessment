@@ -57,10 +57,15 @@ source("R/modules/wrappers/mod_assessment_wrapper.R")
 source("R/modules/wrappers/mod_milestone_self_eval_wrapper.R")
 source("R/modules/wrappers/mod_goals_wrapper.R")
 
+# Source utility functions
+source("R/utils/completion_tracker.R")
+
 # Source individual modules
 source("R/modules/mod_program_feedback.R")
 source("R/modules/mod_learning.R")
 source("R/modules/mod_assessment_detail_custom.R")
+source("R/modules/mod_completion_checklist.R")
+source("R/modules/mod_ilp_summary.R")
 source("R/goal_mod.R")
 
 
