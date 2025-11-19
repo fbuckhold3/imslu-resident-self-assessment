@@ -27,14 +27,17 @@ mod_completion_checklist_ui <- function(id, show_details = TRUE) {
 mod_completion_checklist_server <- function(id, rdm_data, record_id, period, show_details = TRUE) {
   moduleServer(id, function(input, output, session) {
 
-    # Get completion status
-    completion_status <- reactive({
-      req(rdm_data(), record_id(), period())
+    # Extract period number from various formats - as a reactive
+    period_num <- reactive({
+      req(period())
 
-      period_num <- if (is.numeric(period())) {
+      if (is.numeric(period())) {
         period()
-      } else {
-        # Convert period name to number if needed
+      } else if (is.list(period()) && "period_number" %in% names(period())) {
+        # period() is a list from active_period() with period_number field
+        period()$period_number
+      } else if (is.character(period())) {
+        # period() is a period name string
         period_map <- c(
           "Entering Residency" = 7,
           "Mid Intern" = 1,
@@ -45,17 +48,25 @@ mod_completion_checklist_server <- function(id, rdm_data, record_id, period, sho
           "Graduating" = 6
         )
         period_map[period()]
+      } else {
+        # Fallback - try to coerce to numeric
+        as.numeric(period())
       }
+    })
 
-      get_period_completion_status(rdm_data(), record_id(), period_num)
+    # Get completion status
+    completion_status <- reactive({
+      req(rdm_data(), record_id(), period_num())
+
+      get_period_completion_status(rdm_data(), record_id(), period_num())
     })
 
     # Render checklist
     output$checklist_display <- renderUI({
-      req(completion_status())
+      req(completion_status(), period_num())
 
       status_df <- completion_status()
-      required_modules <- get_required_modules(period())
+      required_modules <- get_required_modules(period_num())
 
       # Calculate overall progress
       completed <- sum(status_df$complete)
@@ -140,9 +151,9 @@ mod_completion_checklist_server <- function(id, rdm_data, record_id, period, sho
         all(completion_status()$complete)
       }),
       required_complete = reactive({
-        req(completion_status(), period())
+        req(completion_status(), period_num())
         status_df <- completion_status()
-        required_modules <- get_required_modules(period())
+        required_modules <- get_required_modules(period_num())
         all(status_df$complete[status_df$module_id %in% required_modules])
       }),
       percentage = reactive({

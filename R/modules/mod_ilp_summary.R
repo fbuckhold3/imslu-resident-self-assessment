@@ -34,7 +34,11 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict) {
 
       if (is.numeric(period())) {
         period()
-      } else {
+      } else if (is.list(period()) && "period_number" %in% names(period())) {
+        # period() is a list from active_period() with period_number field
+        period()$period_number
+      } else if (is.character(period())) {
+        # period() is a period name string
         period_map <- c(
           "Entering Residency" = 7,
           "Mid Intern" = 1,
@@ -45,6 +49,9 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict) {
           "Graduating" = 6
         )
         period_map[period()]
+      } else {
+        # Fallback
+        as.numeric(period())
       }
     })
 
