@@ -147,18 +147,18 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
     
     # Save handler
     observeEvent(input$save_feedback, {
-      
+
       message("========================================")
       message("PROGRAM FEEDBACK SAVE BUTTON CLICKED")
       message("========================================")
-      
+
       # Check if we have record_id
       if (is.null(record_id()) || length(record_id()) == 0) {
         message("ERROR: No record_id available")
         showNotification("Error: No record ID", type = "error", duration = 10)
         return()
       }
-      
+
       message("Record ID: ", record_id())
 
       rv$save_in_progress <- TRUE
@@ -207,57 +207,52 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       }
 
       message("Final period_number: ", period_number)
-      
-      # Prepare field data
-      feedback_data <- list(
-        s_e_prog_plus = input$s_e_prog_plus %||% "",
-        s_e_prog_delta = input$s_e_prog_delta %||% "",
-        s_e_progconf = input$s_e_progconf %||% "",
-        s_e_progfeed = input$s_e_progfeed %||% ""
+
+      # Build data frame for submission (like Career Planning module)
+      submit_data <- data.frame(
+        record_id = record_id(),
+        redcap_repeat_instrument = "s_eval",
+        redcap_repeat_instance = period_number,
+        stringsAsFactors = FALSE
       )
-      
+
+      # Add feedback fields
+      submit_data$s_e_prog_plus <- input$s_e_prog_plus %||% ""
+      submit_data$s_e_prog_delta <- input$s_e_prog_delta %||% ""
+      submit_data$s_e_progconf <- input$s_e_progconf %||% ""
+      submit_data$s_e_progfeed <- input$s_e_progfeed %||% ""
+
       message("Feedback data:")
-      message("  s_e_prog_plus: ", nchar(feedback_data$s_e_prog_plus), " chars")
-      message("  s_e_prog_delta: ", nchar(feedback_data$s_e_prog_delta), " chars")
-      message("  s_e_progconf: ", nchar(feedback_data$s_e_progconf), " chars")
-      message("  s_e_progfeed: ", nchar(feedback_data$s_e_progfeed), " chars")
-      
-      # Check if submit_self_eval_data function exists
-      if (!exists("submit_self_eval_data")) {
-        message("ERROR: submit_self_eval_data function does not exist!")
-        rv$save_in_progress <- FALSE
-        showNotification(
-          "Error: Submission function not found. Check console for details.",
-          type = "error",
-          duration = 10
-        )
-        return()
-      }
-      
-      message("Calling submit_self_eval_data...")
-      
-      # Call the submission function
-        # Call the submission function - now uses gmed package
+      message("  s_e_prog_plus: ", nchar(submit_data$s_e_prog_plus), " chars")
+      message("  s_e_prog_delta: ", nchar(submit_data$s_e_prog_delta), " chars")
+      message("  s_e_progconf: ", nchar(submit_data$s_e_progconf), " chars")
+      message("  s_e_progfeed: ", nchar(submit_data$s_e_progfeed), " chars")
+      message("Submitting to REDCap with instance = ", period_number)
+
+      # Submit to REDCap using REDCapR directly (like Career Planning module)
       result <- tryCatch({
-        gmed::submit_self_eval_data(  # Explicitly call gmed version
-          record_id = record_id(),
-          period = period_number,
-          data = feedback_data
+        result_obj <- REDCapR::redcap_write_oneshot(
+          ds = submit_data,
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token
         )
+
+        if (result_obj$success) {
+          list(success = TRUE, message = "Data saved successfully")
+        } else {
+          list(success = FALSE, message = result_obj$outcome_message)
+        }
       }, error = function(e) {
-        message("ERROR in submit_self_eval_data: ", e$message)
+        message("ERROR in submission: ", e$message)
         list(success = FALSE, message = paste("R error:", e$message))
       })
-      
+
       rv$save_in_progress <- FALSE
-      
+
       message("Submission result received:")
       message("  Success: ", result$success)
       message("  Message: ", result$message)
-      if (!is.null(result$instance)) {
-        message("  Instance: ", result$instance)
-      }
-      
+
       if (result$success) {
         rv$last_save_time <- Sys.time()
         showNotification(
@@ -272,7 +267,7 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
           duration = 10
         )
       }
-      
+
       message("========================================")
       message("SAVE PROCESS COMPLETE")
       message("========================================")
