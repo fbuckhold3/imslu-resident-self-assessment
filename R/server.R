@@ -278,15 +278,35 @@ active_period <- reactive({
 })
   
   output$resident_coach_display_intro <- renderText({
-  req(values$resident_info)
-  values$resident_info$coach %||% "Not assigned"
-})
-  
+    req(values$resident_info, values$app_data$data_dict)
+
+    coach_code <- values$resident_info$coach
+
+    if (is.null(coach_code) || is.na(coach_code) || coach_code == "") {
+      return("Not assigned")
+    }
+
+    # Translate coach code to name using data dictionary
+    coach_field <- values$app_data$data_dict %>%
+      dplyr::filter(field_name == "coach") %>%
+      dplyr::slice(1)
+
+    if (nrow(coach_field) > 0) {
+      coach_choices <- gmed::parse_redcap_choices(
+        coach_field$select_choices_or_calculations[1]
+      )
+      coach_name <- coach_choices[as.character(coach_code)]
+      return(coach_name %||% paste("Coach #", coach_code))
+    }
+
+    return(paste("Coach #", coach_code))
+  })
+
   output$resident_coach_email_display_intro <- renderUI({
     req(values$resident_info)
-    
+
     email <- values$resident_info$coach_email
-    
+
     if (!is.null(email) && nchar(trimws(email)) > 0) {
       tags$a(
         href = paste0("mailto:", email),
@@ -298,17 +318,119 @@ active_period <- reactive({
       tags$span(class = "text-muted", "No email on file")
     }
   })
-  
+
   output$resident_track_display_intro <- renderText({
     req(values$resident_info)
-    
+
     # With raw data, type is a code (1 or 2)
     type_code <- as.numeric(values$resident_info$type)
-    
+
     switch(as.character(type_code),
       "1" = "Preliminary",
       "2" = "Categorical",
       "Unknown")
+  })
+
+  # ============================================================================
+  # COMPACT VERSIONS FOR SIDE-BY-SIDE LAYOUT
+  # ============================================================================
+
+  output$resident_level_display_intro_compact <- renderText({
+    req(values$resident_info, active_period())
+    period_info <- active_period()
+
+    level_text <- switch(as.character(period_info$pgy_year),
+                        "1" = "PGY-1",
+                        "2" = "PGY-2",
+                        "3" = "PGY-3",
+                        "Unknown")
+
+    level_text
+  })
+
+  output$resident_track_display_intro_compact <- renderText({
+    req(values$resident_info)
+
+    type_code <- as.numeric(values$resident_info$type)
+
+    switch(as.character(type_code),
+      "1" = "Preliminary",
+      "2" = "Categorical",
+      "Unknown")
+  })
+
+  output$resident_period_display_intro_compact <- renderText({
+    req(values$resident_info, active_period())
+    period_info <- active_period()
+
+    paste0(period_info$period_name, " (P", period_info$period_number, ")")
+  })
+
+  output$resident_academic_year_display_intro_compact <- renderText({
+    year <- as.numeric(format(Sys.Date(), "%Y"))
+    month <- as.numeric(format(Sys.Date(), "%m"))
+
+    if (month >= 7) {
+      paste0(year, "-", year + 1)
+    } else {
+      paste0(year - 1, "-", year)
+    }
+  })
+
+  output$resident_grad_year_display_intro_compact <- renderText({
+    req(values$resident_info, values$app_data$data_dict)
+
+    grad_yr_code <- as.character(values$resident_info$grad_yr)
+    grad_yr_field <- values$app_data$data_dict %>%
+      dplyr::filter(field_name == "grad_yr") %>%
+      dplyr::slice(1)
+
+    grad_yr_choices <- gmed::parse_redcap_choices(
+      grad_yr_field$select_choices_or_calculations[1]
+    )
+
+    as.character(grad_yr_choices[grad_yr_code]) %||% "Unknown"
+  })
+
+  output$resident_coach_display_intro_compact <- renderText({
+    req(values$resident_info, values$app_data$data_dict)
+
+    coach_code <- values$resident_info$coach
+
+    if (is.null(coach_code) || is.na(coach_code) || coach_code == "") {
+      return("Not assigned")
+    }
+
+    coach_field <- values$app_data$data_dict %>%
+      dplyr::filter(field_name == "coach") %>%
+      dplyr::slice(1)
+
+    if (nrow(coach_field) > 0) {
+      coach_choices <- gmed::parse_redcap_choices(
+        coach_field$select_choices_or_calculations[1]
+      )
+      coach_name <- coach_choices[as.character(coach_code)]
+      return(coach_name %||% paste("Coach #", coach_code))
+    }
+
+    return(paste("Coach #", coach_code))
+  })
+
+  output$resident_coach_email_display_intro_compact <- renderUI({
+    req(values$resident_info)
+
+    email <- values$resident_info$coach_email
+
+    if (!is.null(email) && nchar(trimws(email)) > 0) {
+      tags$a(
+        href = paste0("mailto:", email),
+        icon("envelope", class = "me-1"),
+        email,
+        class = "text-decoration-none small"
+      )
+    } else {
+      tags$span(class = "text-muted small", "No email on file")
+    }
   })
   
   # ============================================================================

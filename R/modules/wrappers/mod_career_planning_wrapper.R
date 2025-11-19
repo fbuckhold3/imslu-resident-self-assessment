@@ -204,11 +204,12 @@ output$previous_career_display <- renderUI({
         ),
         
         conditionalPanel(
-          condition = "input.career_path && input.career_path.includes('4')",
+          condition = "input.career_path && input.career_path.includes('8')",
           ns = ns,
           textInput(
             ns("career_oth"),
-            label = get_field_label(career_oth_field)
+            label = get_field_label(career_oth_field),
+            placeholder = "Please specify other career path"
           )
         ),
         
@@ -415,7 +416,7 @@ output$previous_career_display <- renderUI({
       }
 
       # Career path other
-      submit_data$s_e_career_oth <- if ("4" %in% input$career_path) input$career_oth %||% "" else ""
+      submit_data$s_e_career_oth <- if ("8" %in% input$career_path) input$career_oth %||% "" else ""
 
       # Add fellowship checkboxes - EXPAND TO INDIVIDUAL FIELDS
       fellow_field <- get_field_info("s_e_fellow")
