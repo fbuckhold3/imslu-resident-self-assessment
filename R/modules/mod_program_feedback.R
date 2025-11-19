@@ -160,10 +160,10 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       }
       
       message("Record ID: ", record_id())
-      
+
       rv$save_in_progress <- TRUE
-      
-      # Get period info
+
+      # Get period info - handle all possible formats
       current_period <- if (is.reactive(period)) {
         message("Period is reactive, getting value...")
         period()
@@ -171,12 +171,21 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
         message("Period is static")
         period
       }
-      
+
       message("Current period raw: '", current_period, "'")
       message("Current period class: ", class(current_period))
-      
-      # Convert period name to number if necessary
-      period_number <- if (is.character(current_period)) {
+
+      # Convert period to number - robust handling
+      period_number <- if (is.numeric(current_period)) {
+        # Already a number
+        message("Period is numeric: ", current_period)
+        current_period
+      } else if (is.list(current_period) && "period_number" %in% names(current_period)) {
+        # It's a list from active_period() with period_number field
+        message("Period is list, extracting period_number: ", current_period$period_number)
+        current_period$period_number
+      } else if (is.character(current_period)) {
+        # It's a period name string
         pn <- switch(current_period,
                "Entering Residency" = 7,
                "Mid Intern" = 1,
@@ -192,10 +201,11 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
         message("Period is NULL, defaulting to 1")
         1
       } else {
-        message("Using period as-is: ", current_period)
-        current_period
+        # Try to coerce to numeric
+        message("Unknown period type, attempting coercion: ", current_period)
+        as.numeric(current_period)
       }
-      
+
       message("Final period_number: ", period_number)
       
       # Prepare field data
