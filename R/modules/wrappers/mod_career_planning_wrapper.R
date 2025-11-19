@@ -132,45 +132,205 @@ mod_career_planning_wrapper_server <- function(id, rdm_data, record_id, period, 
       setNames(codes, labels)
     }
     
-#Display previous wellness
+# Display previous wellness
 output$previous_wellness_display <- renderUI({
-  req(rdm_data(), period())
-  
-  # Get previous period data
-  prev_period <- as.numeric(period()) - 1
-  if (prev_period < 1) return(NULL)
-  
-  prev_data <- rdm_data() %>%
-    dplyr::filter(
-      record_id == !!record_id(),
-      redcap_repeat_instrument == "S Eval",
-      s_e_period == as.character(prev_period)
+  req(rdm_data(), period(), record_id())
+
+  # Convert period to number - handle all types
+  current_period_num <- if (is.numeric(period())) {
+    period()
+  } else if (is.list(period()) && "period_number" %in% names(period())) {
+    period()$period_number
+  } else if (is.character(period())) {
+    period_map <- c(
+      "Entering Residency" = 7, "Mid Intern" = 1, "End Intern" = 2,
+      "Mid PGY2" = 3, "End PGY2" = 4, "Mid PGY3" = 5, "Graduating" = 6
     )
-  
-  if (nrow(prev_data) == 0 || is.na(prev_data$s_e_well[1])) {
-    return(div(class = "alert alert-info", "No previous wellness comments."))
+    period_map[period()]
+  } else {
+    as.numeric(period())
   }
-  
-  div(
-    class = "card mb-3 bg-light",
-    div(
-      class = "card-body",
-      h5(class = "card-title", "Previous Wellness Comments (Period ", prev_period, ")"),
-      p(class = "card-text", prev_data$s_e_well[1])
+
+  # Get previous period data
+  prev_period <- current_period_num - 1
+  if (prev_period < 1) return(NULL)
+
+  # Access s_eval form data correctly
+  if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
+    prev_data <- rdm_data()$all_forms$s_eval %>%
+      dplyr::filter(
+        record_id == !!record_id(),
+        redcap_repeat_instrument == "s_eval",
+        redcap_repeat_instance == prev_period
+      )
+
+    if (nrow(prev_data) == 0 || is.na(prev_data$s_e_well[1]) || prev_data$s_e_well[1] == "") {
+      return(div(class = "alert alert-info", "No previous wellness comments."))
+    }
+
+    return(
+      div(
+        class = "card mb-3 bg-light",
+        div(
+          class = "card-body",
+          h5(class = "card-title", "Previous Wellness Comments (Period ", prev_period, ")"),
+          p(class = "card-text", prev_data$s_e_well[1])
+        )
+      )
     )
-  )
+  }
+
+  return(div(class = "alert alert-info", "No previous wellness comments."))
 })
 
 # Display previous career planning
 output$previous_career_display <- renderUI({
-  req(rdm_data(), period())
-  
-  gmed::display_career_planning(
-    rdm_data = rdm_data(),
-    record_id = record_id(),
-    current_period = period(),
-    data_dict = data_dict
-  )
+  req(rdm_data(), period(), record_id())
+
+  # Convert period to number - handle all types
+  current_period_num <- if (is.numeric(period())) {
+    period()
+  } else if (is.list(period()) && "period_number" %in% names(period())) {
+    period()$period_number
+  } else if (is.character(period())) {
+    period_map <- c(
+      "Entering Residency" = 7, "Mid Intern" = 1, "End Intern" = 2,
+      "Mid PGY2" = 3, "End PGY2" = 4, "Mid PGY3" = 5, "Graduating" = 6
+    )
+    period_map[period()]
+  } else {
+    as.numeric(period())
+  }
+
+  # Get previous period data
+  prev_period <- current_period_num - 1
+  if (prev_period < 1) return(NULL)
+
+  # Access s_eval form data correctly
+  if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
+    prev_data <- rdm_data()$all_forms$s_eval %>%
+      dplyr::filter(
+        record_id == !!record_id(),
+        redcap_repeat_instrument == "s_eval",
+        redcap_repeat_instance == prev_period
+      )
+
+    if (nrow(prev_data) == 0) {
+      return(div(class = "alert alert-info", "No previous career planning data."))
+    }
+
+    # Decode career path checkboxes
+    career_cols <- grep("^s_e_career_path___", names(prev_data), value = TRUE)
+    career_selected <- character()
+    if (length(career_cols) > 0) {
+      career_field <- get_field_info("s_e_career_path")
+      career_choices_map <- parse_choices(get_choices_string(career_field))
+
+      for (col in career_cols) {
+        if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
+          code <- sub("s_e_career_path___", "", col)
+          # Find label for this code
+          label <- names(career_choices_map)[career_choices_map == code]
+          if (length(label) > 0) {
+            career_selected <- c(career_selected, label)
+          }
+        }
+      }
+    }
+
+    # Decode fellowship checkboxes
+    fellow_cols <- grep("^s_e_fellow___", names(prev_data), value = TRUE)
+    fellow_selected <- character()
+    if (length(fellow_cols) > 0) {
+      fellow_field <- get_field_info("s_e_fellow")
+      fellow_choices_map <- parse_choices(get_choices_string(fellow_field))
+
+      for (col in fellow_cols) {
+        if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
+          code <- sub("s_e_fellow___", "", col)
+          label <- names(fellow_choices_map)[fellow_choices_map == code]
+          if (length(label) > 0) {
+            fellow_selected <- c(fellow_selected, label)
+          }
+        }
+      }
+    }
+
+    # Decode track type checkboxes
+    track_cols <- grep("^s_e_track_type___", names(prev_data), value = TRUE)
+    track_selected <- character()
+    if (length(track_cols) > 0) {
+      track_field <- get_field_info("s_e_track_type")
+      track_choices_map <- parse_choices(get_choices_string(track_field))
+
+      for (col in track_cols) {
+        if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
+          code <- sub("s_e_track_type___", "", col)
+          label <- names(track_choices_map)[track_choices_map == code]
+          if (length(label) > 0) {
+            track_selected <- c(track_selected, label)
+          }
+        }
+      }
+    }
+
+    # Build display
+    content_parts <- list()
+
+    if (length(career_selected) > 0) {
+      content_parts <- c(content_parts, list(
+        p(strong("Career Path(s): "), paste(career_selected, collapse = ", "))
+      ))
+
+      if (!is.na(prev_data$s_e_career_oth[1]) && prev_data$s_e_career_oth[1] != "") {
+        content_parts <- c(content_parts, list(
+          p(strong("Other Career Path: "), prev_data$s_e_career_oth[1])
+        ))
+      }
+    }
+
+    if (length(fellow_selected) > 0) {
+      content_parts <- c(content_parts, list(
+        p(strong("Fellowship Interest(s): "), paste(fellow_selected, collapse = ", "))
+      ))
+
+      if (!is.na(prev_data$s_e_fellow_oth[1]) && prev_data$s_e_fellow_oth[1] != "") {
+        content_parts <- c(content_parts, list(
+          p(strong("Other Fellowship: "), prev_data$s_e_fellow_oth[1])
+        ))
+      }
+    }
+
+    if (!is.na(prev_data$s_e_track[1])) {
+      track_text <- if (prev_data$s_e_track[1] == "1") "Yes" else "No"
+      content_parts <- c(content_parts, list(
+        p(strong("Interested in Program Track: "), track_text)
+      ))
+
+      if (prev_data$s_e_track[1] == "1" && length(track_selected) > 0) {
+        content_parts <- c(content_parts, list(
+          p(strong("Track Type(s): "), paste(track_selected, collapse = ", "))
+        ))
+      }
+    }
+
+    if (length(content_parts) == 0) {
+      return(div(class = "alert alert-info", "No previous career planning data."))
+    }
+
+    return(
+      div(
+        class = "card mb-3 bg-light",
+        div(
+          class = "card-body",
+          h5(class = "card-title", "Previous Career Planning (Period ", prev_period, ")"),
+          content_parts
+        )
+      )
+    )
+  }
+
+  return(div(class = "alert alert-info", "No previous career planning data."))
 })
     
     # Dynamic form rendering
@@ -259,93 +419,92 @@ output$previous_career_display <- renderUI({
     # Pre-populate fields with existing data from current period
     observe({
       req(rdm_data(), period(), record_id())
-      
-      # Map period to number if it's text
-      period_map <- c(
-        "Entering Residency" = "7",
-        "Mid Intern" = "1",
-        "End Intern" = "2",
-        "Mid PGY2" = "3",
-        "End PGY2" = "4",
-        "Mid PGY3" = "5",
-        "Graduating" = "6"
-      )
-      
+
+      # Convert period to number - handle all types
       period_num <- if (is.numeric(period())) {
-        as.character(period())
-      } else if (period() %in% names(period_map)) {
+        period()
+      } else if (is.list(period()) && "period_number" %in% names(period())) {
+        period()$period_number
+      } else if (is.character(period())) {
+        period_map <- c(
+          "Entering Residency" = 7, "Mid Intern" = 1, "End Intern" = 2,
+          "Mid PGY2" = 3, "End PGY2" = 4, "Mid PGY3" = 5, "Graduating" = 6
+        )
         period_map[period()]
       } else {
-        period()
+        as.numeric(period())
       }
-      
-      current_data <- rdm_data() %>%
-        dplyr::filter(
-          record_id == !!record_id(),
-          redcap_repeat_instrument == "S Eval",
-          s_e_period == !!period_num
-        )
-      
-      if (nrow(current_data) > 0) {
-        # Wellness - FIXED: s_e_well not s_e_wellness
-        if (!is.na(current_data$s_e_well[1]) && "s_e_well" %in% names(current_data)) {
-          updateTextAreaInput(session, "wellness", value = current_data$s_e_well[1])
-        }
-        
-        # Career path - decode checkboxes
-        career_cols <- grep("^s_e_career_path___", names(current_data), value = TRUE)
-        if (length(career_cols) > 0) {
-          checked_codes <- character()
-          for (col in career_cols) {
-            if (!is.na(current_data[[col]][1]) && current_data[[col]][1] == "1") {
-              code <- sub("s_e_career_path___", "", col)
-              checked_codes <- c(checked_codes, code)
+
+      # Access s_eval form data correctly
+      if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
+        current_data <- rdm_data()$all_forms$s_eval %>%
+          dplyr::filter(
+            record_id == !!record_id(),
+            redcap_repeat_instrument == "s_eval",
+            redcap_repeat_instance == period_num
+          )
+
+        if (nrow(current_data) > 0) {
+          # Wellness
+          if (!is.na(current_data$s_e_well[1]) && current_data$s_e_well[1] != "") {
+            updateTextAreaInput(session, "wellness", value = current_data$s_e_well[1])
+          }
+
+          # Career path - decode checkboxes
+          career_cols <- grep("^s_e_career_path___", names(current_data), value = TRUE)
+          if (length(career_cols) > 0) {
+            checked_codes <- character()
+            for (col in career_cols) {
+              if (!is.na(current_data[[col]][1]) && current_data[[col]][1] == "1") {
+                code <- sub("s_e_career_path___", "", col)
+                checked_codes <- c(checked_codes, code)
+              }
+            }
+            if (length(checked_codes) > 0) {
+              updateCheckboxGroupInput(session, "career_path", selected = checked_codes)
             }
           }
-          if (length(checked_codes) > 0) {
-            updateCheckboxGroupInput(session, "career_path", selected = checked_codes)
+
+          if (!is.na(current_data$s_e_career_oth[1]) && current_data$s_e_career_oth[1] != "") {
+            updateTextInput(session, "career_oth", value = current_data$s_e_career_oth[1])
           }
-        }
-        
-        if (!is.na(current_data$s_e_career_oth[1]) && "s_e_career_oth" %in% names(current_data)) {
-          updateTextInput(session, "career_oth", value = current_data$s_e_career_oth[1])
-        }
-        
-        # Fellow - decode checkboxes
-        fellow_cols <- grep("^s_e_fellow___", names(current_data), value = TRUE)
-        if (length(fellow_cols) > 0) {
-          checked_codes <- character()
-          for (col in fellow_cols) {
-            if (!is.na(current_data[[col]][1]) && current_data[[col]][1] == "1") {
-              code <- sub("s_e_fellow___", "", col)
-              checked_codes <- c(checked_codes, code)
+
+          # Fellow - decode checkboxes
+          fellow_cols <- grep("^s_e_fellow___", names(current_data), value = TRUE)
+          if (length(fellow_cols) > 0) {
+            checked_codes <- character()
+            for (col in fellow_cols) {
+              if (!is.na(current_data[[col]][1]) && current_data[[col]][1] == "1") {
+                code <- sub("s_e_fellow___", "", col)
+                checked_codes <- c(checked_codes, code)
+              }
+            }
+            if (length(checked_codes) > 0) {
+              updateCheckboxGroupInput(session, "fellow", selected = checked_codes)
             }
           }
-          if (length(checked_codes) > 0) {
-            updateCheckboxGroupInput(session, "fellow", selected = checked_codes)
+
+          if (!is.na(current_data$s_e_fellow_oth[1]) && current_data$s_e_fellow_oth[1] != "") {
+            updateTextInput(session, "fellow_oth", value = current_data$s_e_fellow_oth[1])
           }
-        }
-        
-        if (!is.na(current_data$s_e_fellow_oth[1]) && "s_e_fellow_oth" %in% names(current_data)) {
-          updateTextInput(session, "fellow_oth", value = current_data$s_e_fellow_oth[1])
-        }
-        
-        if (!is.na(current_data$s_e_track[1]) && "s_e_track" %in% names(current_data)) {
-          updateRadioButtons(session, "track", selected = current_data$s_e_track[1])
-        }
-        
-        # Track type - decode checkboxes
-        track_cols <- grep("^s_e_track_type___", names(current_data), value = TRUE)
-        if (length(track_cols) > 0) {
-          checked_codes <- character()
-          for (col in track_cols) {
-            if (!is.na(current_data[[col]][1]) && current_data[[col]][1] == "1") {
-              code <- sub("s_e_track_type___", "", col)
-              checked_codes <- c(checked_codes, code)
+
+          if (!is.na(current_data$s_e_track[1])) {
+            updateRadioButtons(session, "track", selected = current_data$s_e_track[1])
+          }
+
+          # Track type - decode checkboxes
+          track_cols <- grep("^s_e_track_type___", names(current_data), value = TRUE)
+          if (length(track_cols) > 0) {
+            checked_codes <- character()
+            for (col in track_cols) {
+              if (!is.na(current_data[[col]][1]) && current_data[[col]][1] == "1") {
+                code <- sub("s_e_track_type___", "", col)
+                checked_codes <- c(checked_codes, code)
+              }
             }
-          }
-          if (length(checked_codes) > 0) {
-            updateCheckboxGroupInput(session, "track_type", selected = checked_codes)
+            if (length(checked_codes) > 0) {
+              updateCheckboxGroupInput(session, "track_type", selected = checked_codes)
+            }
           }
         }
       }
