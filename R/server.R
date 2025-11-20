@@ -4,49 +4,99 @@
 # ============================================================================
 
 server <- function(input, output, session) {
-  
+
   # ============================================================================
   # REACTIVE VALUES
   # ============================================================================
-  
+
   values <- reactiveValues(
     authenticated = FALSE,
     current_resident = NULL,
     resident_info = NULL,
-    app_data = NULL
+    app_data = NULL,
+    data_loaded = FALSE
   )
-  
+
+  # ============================================================================
+  # DATA LOADING ON STARTUP - with progress messages
+  # ============================================================================
+
+  observe({
+    # Run once on startup
+    isolate({
+      if (!values$data_loaded) {
+
+        # Update loading message
+        shinyjs::html("loading_message", "Connecting to REDCap database...")
+
+        # Small delay to ensure UI renders
+        Sys.sleep(0.5)
+
+        tryCatch({
+          # Update message
+          shinyjs::html("loading_message", "Loading resident data...")
+
+          # Load the data
+          values$app_data <- load_app_data()
+
+          # Update message
+          shinyjs::html("loading_message", "Processing assessments...")
+          Sys.sleep(0.3)
+
+          # Update message
+          shinyjs::html("loading_message", "Preparing milestones...")
+          Sys.sleep(0.3)
+
+          # Mark as loaded
+          values$data_loaded <- TRUE
+
+          # Update message
+          shinyjs::html("loading_message", "Ready!")
+          Sys.sleep(0.2)
+
+          # Hide the loading overlay
+          shinyjs::hide("loading_overlay", anim = TRUE, animType = "fade")
+
+          message("App data loaded successfully on startup")
+
+        }, error = function(e) {
+          # Show error message
+          shinyjs::html("loading_message",
+                       paste0("Error loading data: ", e$message,
+                             "<br>Please refresh the page or contact support."))
+          showNotification("Failed to load application data. Please refresh the page.",
+                         type = "error", duration = NULL)
+        })
+      }
+    })
+  })
+
   # ============================================================================
   # AUTHENTICATION - Using gmed universal function
   # ============================================================================
-  
+
   observeEvent(input$submit_code, {
-    req(input$access_code_input)
-    
-    # Load app data first
-    if (is.null(values$app_data)) {
-      values$app_data <- load_app_data()
-    }
-    
-    # Authenticate using gmed function
+    req(input$access_code_input, values$data_loaded)
+
+    # Data is already loaded, just authenticate
     auth_result <- gmed::authenticate_resident(
       access_code = input$access_code_input,
       residents_df = values$app_data$residents,
       allow_record_id = TRUE,
       debug = app_config$debug_mode
     )
-    
+
     if (auth_result$success) {
       # Success!
       values$authenticated <- TRUE
       values$resident_info <- auth_result$resident_info
       values$current_resident <- auth_result$resident_info$record_id
-      
+
       # Navigate to intro page
       updateNavbarPage(session, "main_nav", selected = "intro")
-      
+
       showNotification(auth_result$message, type = "message")
-      
+
     } else {
       # Failed
       shinyjs::show("access_code_error")
@@ -165,7 +215,16 @@ active_period <- reactive({
   # ============================================================================
   # INTRO PAGE OUTPUTS
   # ============================================================================
-  
+
+  # Initialize intro page checklist
+  mod_completion_checklist_server(
+    "intro_checklist",
+    rdm_data = reactive(values$app_data),
+    record_id = reactive(values$current_resident),
+    period = active_period,
+    show_details = TRUE
+  )
+
   output$resident_name_display_intro <- renderText({
     req(values$resident_info)
     values$resident_info$name %||% "Resident"
@@ -219,15 +278,35 @@ active_period <- reactive({
 })
   
   output$resident_coach_display_intro <- renderText({
-  req(values$resident_info)
-  values$resident_info$coach %||% "Not assigned"
-})
-  
+    req(values$resident_info, values$app_data$data_dict)
+
+    coach_code <- values$resident_info$coach
+
+    if (is.null(coach_code) || is.na(coach_code) || coach_code == "") {
+      return("Not assigned")
+    }
+
+    # Translate coach code to name using data dictionary
+    coach_field <- values$app_data$data_dict %>%
+      dplyr::filter(field_name == "coach") %>%
+      dplyr::slice(1)
+
+    if (nrow(coach_field) > 0) {
+      coach_choices <- gmed::parse_redcap_choices(
+        coach_field$select_choices_or_calculations[1]
+      )
+      coach_name <- coach_choices[as.character(coach_code)]
+      return(coach_name %||% paste("Coach #", coach_code))
+    }
+
+    return(paste("Coach #", coach_code))
+  })
+
   output$resident_coach_email_display_intro <- renderUI({
     req(values$resident_info)
-    
+
     email <- values$resident_info$coach_email
-    
+
     if (!is.null(email) && nchar(trimws(email)) > 0) {
       tags$a(
         href = paste0("mailto:", email),
@@ -239,17 +318,119 @@ active_period <- reactive({
       tags$span(class = "text-muted", "No email on file")
     }
   })
-  
+
   output$resident_track_display_intro <- renderText({
     req(values$resident_info)
-    
+
     # With raw data, type is a code (1 or 2)
     type_code <- as.numeric(values$resident_info$type)
-    
+
     switch(as.character(type_code),
       "1" = "Preliminary",
       "2" = "Categorical",
       "Unknown")
+  })
+
+  # ============================================================================
+  # COMPACT VERSIONS FOR SIDE-BY-SIDE LAYOUT
+  # ============================================================================
+
+  output$resident_level_display_intro_compact <- renderText({
+    req(values$resident_info, active_period())
+    period_info <- active_period()
+
+    level_text <- switch(as.character(period_info$pgy_year),
+                        "1" = "PGY-1",
+                        "2" = "PGY-2",
+                        "3" = "PGY-3",
+                        "Unknown")
+
+    level_text
+  })
+
+  output$resident_track_display_intro_compact <- renderText({
+    req(values$resident_info)
+
+    type_code <- as.numeric(values$resident_info$type)
+
+    switch(as.character(type_code),
+      "1" = "Preliminary",
+      "2" = "Categorical",
+      "Unknown")
+  })
+
+  output$resident_period_display_intro_compact <- renderText({
+    req(values$resident_info, active_period())
+    period_info <- active_period()
+
+    paste0(period_info$period_name, " (P", period_info$period_number, ")")
+  })
+
+  output$resident_academic_year_display_intro_compact <- renderText({
+    year <- as.numeric(format(Sys.Date(), "%Y"))
+    month <- as.numeric(format(Sys.Date(), "%m"))
+
+    if (month >= 7) {
+      paste0(year, "-", year + 1)
+    } else {
+      paste0(year - 1, "-", year)
+    }
+  })
+
+  output$resident_grad_year_display_intro_compact <- renderText({
+    req(values$resident_info, values$app_data$data_dict)
+
+    grad_yr_code <- as.character(values$resident_info$grad_yr)
+    grad_yr_field <- values$app_data$data_dict %>%
+      dplyr::filter(field_name == "grad_yr") %>%
+      dplyr::slice(1)
+
+    grad_yr_choices <- gmed::parse_redcap_choices(
+      grad_yr_field$select_choices_or_calculations[1]
+    )
+
+    as.character(grad_yr_choices[grad_yr_code]) %||% "Unknown"
+  })
+
+  output$resident_coach_display_intro_compact <- renderText({
+    req(values$resident_info, values$app_data$data_dict)
+
+    coach_code <- values$resident_info$coach
+
+    if (is.null(coach_code) || is.na(coach_code) || coach_code == "") {
+      return("Not assigned")
+    }
+
+    coach_field <- values$app_data$data_dict %>%
+      dplyr::filter(field_name == "coach") %>%
+      dplyr::slice(1)
+
+    if (nrow(coach_field) > 0) {
+      coach_choices <- gmed::parse_redcap_choices(
+        coach_field$select_choices_or_calculations[1]
+      )
+      coach_name <- coach_choices[as.character(coach_code)]
+      return(coach_name %||% paste("Coach #", coach_code))
+    }
+
+    return(paste("Coach #", coach_code))
+  })
+
+  output$resident_coach_email_display_intro_compact <- renderUI({
+    req(values$resident_info)
+
+    email <- values$resident_info$coach_email
+
+    if (!is.null(email) && nchar(trimws(email)) > 0) {
+      tags$a(
+        href = paste0("mailto:", email),
+        icon("envelope", class = "me-1"),
+        email,
+        class = "text-decoration-none small"
+      )
+    } else {
+      tags$span(class = "text-muted small", "No email on file")
+    }
   })
   
   # ============================================================================
@@ -587,4 +768,31 @@ observe({
     }
   }
 })
+
+  # ============================================================================
+  # COMPLETION PAGE - Initialize checklist and ILP summary
+  # ============================================================================
+
+  # Completion page checklist
+  mod_completion_checklist_server(
+    "completion_checklist",
+    rdm_data = reactive(values$app_data),
+    record_id = reactive(values$current_resident),
+    period = active_period,
+    show_details = TRUE
+  )
+
+  # ILP Summary
+  mod_ilp_summary_server(
+    "ilp_summary",
+    rdm_data = reactive(values$app_data),
+    record_id = reactive(values$current_resident),
+    period = reactive(active_period()$period_number),
+    data_dict = values$app_data$data_dict
+  )
+
+  # Return to intro from completion page
+  observeEvent(input$return_to_start, {
+    updateNavbarPage(session, "main_nav", selected = "intro")
+  })
 }

@@ -1,9 +1,15 @@
 #' Assessment Review Wrapper Module UI
+
 #'
+
 #' Wrapper for all assessment visualizations
+
 #' @param id Module namespace
+
 #' @export
+
 mod_assessment_wrapper_ui <- function(id) {
+
   ns <- NS(id)
 
   tagList(
@@ -96,70 +102,169 @@ mod_assessment_wrapper_ui <- function(id) {
  
 
 #' Assessment Review Wrapper Module Server
-#' 
+
+#'
+
 #' @param id Module namespace
+
 #' @param rdm_data Reactive returning app data structure from load_rdm_complete
+
 #' @param record_id Reactive returning resident record_id
+
 #' @param period Reactive returning period number (not used but kept for consistency)
+
 #' @param data_dict Data dictionary
+
 #' @export
+
 mod_assessment_wrapper_server <- function(id, rdm_data, record_id, period, data_dict) {
+
   moduleServer(id, function(input, output, session) {
-    
+
+ 
+
     # Get resident name separately
+
     resident_name <- reactive({
+
       req(rdm_data(), record_id())
-      
+
+ 
+
       app_data <- rdm_data()
-      
+
+ 
+
       # Get name from residents table
+
       resident_info <- app_data$residents %>%
+
         dplyr::filter(record_id == !!record_id()) %>%
+
         dplyr::slice(1)
-      
+
+ 
+
       if (nrow(resident_info) > 0 && !is.na(resident_info$name)) {
+
         return(resident_info$name)
+
       } else {
+
         return(paste("Resident", record_id()))
+
       }
+
     })
-    
-    # Prepare combined data for charts
-    combined_data <- reactive({
-      req(rdm_data())
-      
+
+ 
+
+    # Get resident data for CC completion
+
+    resident_info_data <- reactive({
+
+      req(rdm_data(), record_id())
+
+ 
+
       app_data <- rdm_data()
-      
-      if ("faculty_evaluation" %in% names(app_data$all_forms)) {
-        combined <- bind_rows(
-          app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
-          app_data$all_forms$questions %>% mutate(source_form = "questions"),
-          app_data$all_forms$faculty_evaluation %>% mutate(source_form = "faculty_evaluation")
-        )
-      } else {
-        combined <- bind_rows(
-          app_data$all_forms$assessment %>% mutate(source_form = "assessment"),
-          app_data$all_forms$questions %>% mutate(source_form = "questions")
-        )
-      }
-      
-      return(combined)
+
+ 
+
+      app_data$residents %>%
+
+        dplyr::filter(record_id == !!record_id()) %>%
+
+        dplyr::slice(1)
+
     })
-    
-    # Raw assessment data for plus_delta (expects redcap_repeat_instrument)
+
+ 
+
+    # Get raw assessment data for plus/delta table
+
     raw_assessment_data <- reactive({
+
       req(rdm_data())
-      rdm_data()$all_forms$assessment
+
+      app_data <- rdm_data()
+
+ 
+
+      if ("assessment" %in% names(app_data$all_forms)) {
+
+        return(app_data$all_forms$assessment)
+
+      } else {
+
+        return(data.frame())
+
+      }
+
     })
-    
-    # Call the gmed wrapper with BOTH data sources
-    gmed::mod_assessment_viz_wrapper_server(
-      "viz_wrapper",
-      rdm_data = combined_data,
-      rdm_data_raw = raw_assessment_data,
+
+ 
+
+    # Prepare combined assessment + questions + faculty evaluation data
+
+    combined_data <- reactive({
+
+      req(rdm_data())
+
+ 
+
+      app_data <- rdm_data()
+
+ 
+
+      # Add source_form while preserving redcap_repeat_instrument
+
+      if ("faculty_evaluation" %in% names(app_data$all_forms)) {
+
+        combined <- dplyr::bind_rows(
+
+          app_data$all_forms$assessment %>% dplyr::mutate(source_form = "assessment"),
+
+          app_data$all_forms$questions %>% dplyr::mutate(source_form = "questions"),
+
+          app_data$all_forms$faculty_evaluation %>% dplyr::mutate(source_form = "faculty_evaluation")
+
+        )
+
+      } else {
+
+        combined <- dplyr::bind_rows(
+
+          app_data$all_forms$assessment %>% dplyr::mutate(source_form = "assessment"),
+
+          app_data$all_forms$questions %>% dplyr::mutate(source_form = "questions")
+
+        )
+
+      }
+
+ 
+
+      return(combined)
+
+    })
+
+ 
+
+    # Call individual gmed modules in correct order
+
+ 
+
+    # Assessment charts
+
+    gmed::assessment_viz_server(
+
+      "charts",
+
+      data = combined_data,
+
       record_id = record_id,
-      data_dict = data_dict,
-      include_questions = TRUE,
+
       resident_name = resident_name
 
     )
