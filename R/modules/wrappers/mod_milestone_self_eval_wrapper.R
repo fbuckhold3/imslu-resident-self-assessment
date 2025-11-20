@@ -214,11 +214,11 @@ mod_milestone_entry_server <- function(id, record_id, period, rdm_data) {
 # message("Resident ", record_id(), " has ", nrow(resident_data), " self-milestone records")
         
         if (nrow(resident_data) > 0) {
-# message("Periods in data (prog_mile_period): ", 
-                  paste(unique(resident_data$prog_mile_period), collapse = ", "))
+# message("Periods in data (prog_mile_period): ",
+#                   paste(unique(resident_data$prog_mile_period), collapse = ", "))
           if ("period_name" %in% names(resident_data)) {
-# message("Period names in data (period_name): ", 
-                    paste(unique(resident_data$period_name), collapse = ", "))
+# message("Period names in data (period_name): ",
+#                     paste(unique(resident_data$period_name), collapse = ", "))
           }
 # message("Previous period looking for: ", previous_period())
         } else {
