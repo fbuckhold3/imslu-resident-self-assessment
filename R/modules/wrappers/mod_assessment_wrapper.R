@@ -384,36 +384,70 @@ gmed::mod_assessment_data_display_server(
     observeEvent(input$submit_reflection, {
       req(record_id(), period())
 
-      # Get period number
-      period_num <- if (is.character(period())) {
-        switch(period(),
-               "Entering Residency" = 7,
-               "Mid Intern" = 1,
-               "End Intern" = 2,
-               "Mid PGY2" = 3,
-               "End PGY2" = 4,
-               "Mid PGY3" = 5,
-               "Graduating" = 6,
-               1)
-      } else {
-        as.numeric(period())
-      }
-
-      # Prepare reflection data
-      reflection_data <- list(
-        s_e_plus = input$s_e_plus %||% "",
-        s_e_delta = input$s_e_delta %||% "",
-        s_e_period = as.character(period_num),
-        s_e_date = format(Sys.Date(), "%Y-%m-%d")
+      # Period mappings
+      period_name_to_num <- c(
+        "Entering Residency" = 7,
+        "Mid Intern" = 1,
+        "End Intern" = 2,
+        "Mid PGY2" = 3,
+        "End PGY2" = 4,
+        "Mid PGY3" = 5,
+        "Graduating" = 6,
+        "Graduation" = 6
       )
 
-      # Submit to REDCap using gmed function
+      period_num_to_name <- c(
+        "7" = "Entering Residency",
+        "1" = "Mid Intern",
+        "2" = "End Intern",
+        "3" = "Mid PGY2",
+        "4" = "End PGY2",
+        "5" = "Mid PGY3",
+        "6" = "Graduating"
+      )
+
+      # Get current period
+      current_period <- period()
+
+      # Convert period to number
+      period_number <- if (is.numeric(current_period)) {
+        current_period
+      } else if (is.list(current_period) && "period_number" %in% names(current_period)) {
+        current_period$period_number
+      } else if (is.character(current_period)) {
+        period_name_to_num[current_period] %||% as.numeric(current_period)
+      } else {
+        as.numeric(current_period)
+      }
+
+      # Get period name for s_e_period field
+      period_name <- period_num_to_name[as.character(period_number)]
+
+      # Prepare submission data as data.frame (not list!)
+      submit_data <- data.frame(
+        record_id = record_id(),
+        redcap_repeat_instrument = "s_eval",
+        redcap_repeat_instance = period_number,
+        s_e_plus = input$s_e_plus %||% "",
+        s_e_delta = input$s_e_delta %||% "",
+        s_e_period = period_name,  # Period NAME not number
+        s_e_date = format(Sys.Date(), "%Y-%m-%d"),
+        stringsAsFactors = FALSE
+      )
+
+      # Submit to REDCap using REDCapR directly
       result <- tryCatch({
-        gmed::submit_self_eval_data(
-          record_id = record_id(),
-          period = period_num,
-          data = reflection_data
+        result_obj <- REDCapR::redcap_write_oneshot(
+          ds = submit_data,
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token
         )
+
+        if (result_obj$success) {
+          list(success = TRUE, message = "Data saved successfully")
+        } else {
+          list(success = FALSE, message = result_obj$outcome_message)
+        }
       }, error = function(e) {
         list(success = FALSE, message = paste("Error:", e$message))
       })
