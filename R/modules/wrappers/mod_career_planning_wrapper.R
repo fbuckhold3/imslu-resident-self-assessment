@@ -144,7 +144,7 @@ mod_career_planning_wrapper_server <- function(id, rdm_data, record_id, period, 
 output$previous_wellness_display <- renderUI({
   req(rdm_data(), period(), record_id())
 
-  gmed::display_wellness(
+  display_wellness(
     rdm_data = rdm_data(),
     record_id = record_id(),
     current_period = period()
@@ -155,7 +155,7 @@ output$previous_wellness_display <- renderUI({
 output$previous_career_display <- renderUI({
   req(rdm_data(), period(), record_id())
 
-  gmed::display_career_planning(
+  display_career_planning(
     rdm_data = rdm_data(),
     record_id = record_id(),
     current_period = period(),

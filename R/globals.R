@@ -68,6 +68,10 @@ source("R/modules/mod_completion_checklist.R")
 source("R/modules/mod_ilp_summary.R")
 source("R/goal_mod.R")
 
+# Source enhanced gmed display functions (overrides gmed package if needed)
+source("gmed_functions/display_career_planning_ENHANCED.R")
+source("gmed_functions/display_wellness_ENHANCED.R")
+
 
 # ============================================================================
 # DATA LOADING
