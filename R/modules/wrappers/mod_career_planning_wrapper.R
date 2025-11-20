@@ -144,211 +144,34 @@ mod_career_planning_wrapper_server <- function(id, rdm_data, record_id, period, 
 output$previous_wellness_display <- renderUI({
   req(rdm_data(), period(), record_id())
 
-  # Inline implementation - FIXED VERSION
-  # Get period number
-  period_num <- if (is.numeric(period())) {
-    period()
-  } else if (is.list(period()) && "period_number" %in% names(period())) {
-    period()$period_number
-  } else {
-    as.numeric(period())
-  }
-
-  # Get previous period
-  prev_period <- period_num - 1
-
-  if (prev_period < 1) {
-    return(p(em("No previous wellness data available")))
-  }
-
-  # Get s_eval data - FIXED: use correct structure and field names
-  s_eval_data <- if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
-    rdm_data()$all_forms$s_eval
-  } else if ("s_eval" %in% names(rdm_data())) {
-    rdm_data()$s_eval
-  } else {
-    return(p(em("Error: s_eval data not found")))
-  }
-
-  # Filter for previous period - FIXED: use redcap_repeat_instance, not s_e_period
-  prev_data <- s_eval_data %>%
-    dplyr::filter(
-      record_id == !!record_id(),
-      redcap_repeat_instrument == "s_eval",  # FIXED: lowercase
-      redcap_repeat_instance == prev_period  # FIXED: use repeat_instance
-    )
-
-  if (nrow(prev_data) == 0 || is.na(prev_data$s_e_well[1]) || prev_data$s_e_well[1] == "") {
-    return(p(em("No wellness data from previous period")))
-  }
-
-  # Display previous wellness
-  div(
-    class = "card mb-3",
-    style = "background-color: #e8f5e9; border-color: #81c784;",
-    div(
-      class = "card-body",
-      h5(class = "card-title", style = "color: #2e7d32;", paste("Period", prev_period, "Wellness")),
-      p(prev_data$s_e_well[1])
-    )
+  gmed::display_wellness(
+    rdm_data = rdm_data(),
+    record_id = record_id(),
+    current_period = period()
   )
 })
 
 # Display previous career planning
 output$previous_career_display <- renderUI({
-  req(rdm_data(), period(), record_id(), data_dict)
+  req(rdm_data(), period(), record_id())
 
-  # Inline implementation - FIXED VERSION
-  # Get period number
-  period_num <- if (is.numeric(period())) {
-    period()
-  } else if (is.list(period()) && "period_number" %in% names(period())) {
-    period()$period_number
+  # DEBUG: Print what we're passing to the function
+  message("=== CAREER PLANNING WRAPPER DEBUG ===")
+  message("record_id: ", record_id())
+  message("period type: ", class(period()))
+  if (is.list(period()) && "period_number" %in% names(period())) {
+    message("period_number: ", period()$period_number)
   } else {
-    as.numeric(period())
+    message("period value: ", period())
   }
+  message("data_dict available: ", !is.null(data_dict))
+  message("rdm_data structure: ", paste(names(rdm_data()), collapse = ", "))
 
-  # Get previous period
-  prev_period <- period_num - 1
-
-  if (prev_period < 1) {
-    return(div(
-      class = "alert alert-info",
-      role = "alert",
-      icon("info-circle"),
-      " This is your first self-assessment period. Career planning will be displayed in future periods."
-    ))
-  }
-
-  # Get s_eval data - FIXED: use correct structure and field names
-  s_eval_data <- if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
-    rdm_data()$all_forms$s_eval
-  } else if ("s_eval" %in% names(rdm_data())) {
-    rdm_data()$s_eval
-  } else {
-    return(p(em("Error: s_eval data not found")))
-  }
-
-  # Filter for previous period - FIXED: use redcap_repeat_instance, not s_e_period
-  prev_data <- s_eval_data %>%
-    dplyr::filter(
-      record_id == !!record_id(),
-      redcap_repeat_instrument == "s_eval",  # FIXED: lowercase
-      redcap_repeat_instance == prev_period  # FIXED: use repeat_instance
-    )
-
-  if (nrow(prev_data) == 0) {
-    return(p(em(paste("No career planning data from Period", prev_period))))
-  }
-
-  # Parse career path checkboxes
-  career_cols <- grep("^s_e_career_path___", names(prev_data), value = TRUE)
-  selected_career <- character()
-  if (length(career_cols) > 0) {
-    for (col in career_cols) {
-      if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
-        code <- sub("s_e_career_path___", "", col)
-        # Get label from data dict
-        career_field <- get_field_info("s_e_career_path")
-        career_choices <- parse_choices(get_choices_string(career_field))
-        label <- names(career_choices)[career_choices == code]
-        if (code == "8" && !is.na(prev_data$s_e_career_oth[1]) && prev_data$s_e_career_oth[1] != "") {
-          label <- paste0(label, ": ", prev_data$s_e_career_oth[1])
-        }
-        selected_career <- c(selected_career, label)
-      }
-    }
-  }
-
-  # Parse fellowship checkboxes (only if career path included fellowship)
-  fellow_cols <- grep("^s_e_fellow___", names(prev_data), value = TRUE)
-  selected_fellow <- character()
-  if (length(fellow_cols) > 0) {
-    for (col in fellow_cols) {
-      if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
-        code <- sub("s_e_fellow___", "", col)
-        # Get label from data dict
-        fellow_field <- get_field_info("s_e_fellow")
-        fellow_choices <- parse_choices(get_choices_string(fellow_field))
-        label <- names(fellow_choices)[fellow_choices == code]
-        if (code == "1" && !is.na(prev_data$s_e_fellow_oth[1]) && prev_data$s_e_fellow_oth[1] != "") {
-          label <- paste0(label, ": ", prev_data$s_e_fellow_oth[1])
-        }
-        selected_fellow <- c(selected_fellow, label)
-      }
-    }
-  }
-
-  # Parse track interest
-  track_interest <- NULL
-  if (!is.na(prev_data$s_e_track[1]) && prev_data$s_e_track[1] == "1") {
-    track_cols <- grep("^s_e_track_type___", names(prev_data), value = TRUE)
-    selected_tracks <- character()
-    if (length(track_cols) > 0) {
-      for (col in track_cols) {
-        if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
-          code <- sub("s_e_track_type___", "", col)
-          # Get label from data dict
-          track_field <- get_field_info("s_e_track_type")
-          track_choices <- parse_choices(get_choices_string(track_field))
-          label <- names(track_choices)[track_choices == code]
-          selected_tracks <- c(selected_tracks, label)
-        }
-      }
-    }
-    track_interest <- selected_tracks
-  }
-
-  # Display previous career planning
-  div(
-    class = "card mb-3",
-    style = "background-color: #e3f2fd; border-color: #64b5f6;",
-    div(
-      class = "card-body",
-      h5(class = "card-title", style = "color: #1976d2;", paste("Period", prev_period, "Career Planning")),
-
-      if (length(selected_career) > 0) {
-        div(
-          class = "mb-2",
-          tags$strong("Career Path(s):"),
-          tags$ul(
-            lapply(selected_career, function(x) tags$li(x))
-          )
-        )
-      },
-
-      if (length(selected_fellow) > 0) {
-        div(
-          class = "mb-2",
-          tags$strong("Fellowship Interest(s):"),
-          tags$ul(
-            lapply(selected_fellow, function(x) tags$li(x))
-          )
-        )
-      },
-
-      if (!is.null(track_interest) && length(track_interest) > 0) {
-        div(
-          class = "mb-2",
-          tags$strong("Program Track(s):"),
-          tags$ul(
-            lapply(track_interest, function(x) tags$li(x))
-          )
-        )
-      },
-
-      if (!is.na(prev_data$s_e_discussion[1]) && prev_data$s_e_discussion[1] != "") {
-        div(
-          class = "mb-2",
-          tags$strong("Discussion Topics:"),
-          p(prev_data$s_e_discussion[1])
-        )
-      },
-
-      if (length(selected_career) == 0 && length(selected_fellow) == 0 && is.null(track_interest)) {
-        p(em("No career planning recorded for previous period"))
-      }
-    )
+  gmed::display_career_planning(
+    rdm_data = rdm_data(),
+    record_id = record_id(),
+    current_period = period(),
+    data_dict = data_dict
   )
 })
     
