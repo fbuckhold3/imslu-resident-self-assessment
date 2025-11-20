@@ -52,23 +52,28 @@ mod_scholarship_wrapper_server <- function(id, rdm_data, record_id, period = NUL
     
     # Display scholarship using gmed functions
     output$scholarship_display <- renderUI({
-      
+
       # Get data dictionary
       dict <- if (is.function(data_dict)) {
         data_dict()
       } else {
         data_dict
       }
-      
+
       # Get scholarship data (might be empty)
       schol_data <- scholarship_rv()
-      
+
+      # Validate schol_data is a data frame
+      if (!is.data.frame(schol_data)) {
+        schol_data <- data.frame()
+      }
+
       # Use gmed's display functions
       scholarship_summary <- gmed::display_scholarship(
-        schol_data, 
+        schol_data,
         data_dict = dict
       )
-      
+
       tagList(
         gmed::scholarship_badge_ui(scholarship_summary$badges),
         hr(),
