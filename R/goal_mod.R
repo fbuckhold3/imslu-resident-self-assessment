@@ -170,8 +170,8 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
 #             cat("First row of median data:\n")
 #             print(head(ms_data$medians, 1))
 #           }
-        }
-      }
+#         }
+#       }
 
       if (is.null(ms_data) || is.null(ms_data$data) || nrow(ms_data$data) == 0) {
         return(NULL)
