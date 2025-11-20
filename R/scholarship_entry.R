@@ -335,15 +335,13 @@ scholarship_entry_server <- function(id, record_id, redcap_url, redcap_token, da
       shiny::removeModal()
       reset_form()
       output$submit_message <- shiny::renderUI({ NULL })
-    })
-    
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
     shiny::observeEvent(input$modal_new_entry_no, {
       shiny::removeModal()
-      output$submit_message <- shiny::renderUI({
-        shiny::div(class = "alert alert-success", 
-                  shiny::icon("check-circle"), " All scholarship entries complete!")
-      })
-    })
+      # Clear the message so user can see Next button
+      output$submit_message <- shiny::renderUI({ NULL })
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
   })
 }
 
@@ -561,16 +559,22 @@ handle_submission_result <- function(result, success_message, refresh_callback, 
 
 ask_another_entry <- function(session) {
   ns <- session$ns
-  
+
   shiny::showModal(
     shiny::modalDialog(
       title = "Add Another Entry?",
-      "Would you like to add another scholarly activity?",
+      shiny::div(
+        shiny::p("Would you like to add another scholarly activity?"),
+        shiny::p(class = "text-muted small",
+                shiny::icon("info-circle"),
+                " When done, click 'No' and use the Next button below to continue.")
+      ),
       footer = shiny::tagList(
         shiny::actionButton(ns("modal_new_entry_yes"), "Yes, add another", class = "btn-primary"),
         shiny::actionButton(ns("modal_new_entry_no"), "No, I'm done", class = "btn-secondary")
       ),
-      easyClose = FALSE
+      easyClose = TRUE,
+      fade = TRUE
     )
   )
 }
