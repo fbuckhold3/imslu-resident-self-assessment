@@ -899,11 +899,117 @@ observe({
     # Submit handler
     observeEvent(input$btn_submit, {
       save_page_responses(current_page())
-      
-      showNotification("Goals submitted!", type = "message")
+
+      # Get all necessary data
+      res_info <- if (is.function(resident_info)) resident_info() else resident_info
+      rec_id <- res_info$record_id
+
+      # Get period number
+      current_period <- period_name()
+      period_num <- extract_period_number(current_period)
+
+      # Calculate PGY year from period
+      year_resident <- if (period_num %in% c(1, 2, 7)) {
+        1  # Intern
+      } else if (period_num %in% c(3, 4)) {
+        2  # PGY2
+      } else if (period_num %in% c(5, 6)) {
+        3  # PGY3
+      } else {
+        1  # Default
+      }
+
+      # Get previous goals data
+      prev <- previous_goals()
+
+      # Get current responses
+      all_responses <- responses()
+
+      # Build submission data frame
+      submit_data <- data.frame(
+        record_id = rec_id,
+        redcap_repeat_instrument = "ilp",
+        redcap_repeat_instance = period_num,
+        ilp_date = format(Sys.Date(), "%Y-%m-%d"),
+        year_resident = as.character(year_resident),
+        stringsAsFactors = FALSE
+      )
+
+      # Helper to safely get previous goal value
+      get_prev_goal <- function(field_name) {
+        if (is.null(prev) || nrow(prev) == 0) return(NA)
+        val <- prev[[field_name]][1]
+        if (is.null(val) || is.na(val) || val == "") return(NA)
+        return(as.character(val))
+      }
+
+      # PC/MK domain
+      if ("pcmk" %in% names(all_responses)) {
+        pcmk <- all_responses$pcmk
+        submit_data$prior_goal_pcmk <- get_prev_goal("goal_pcmk")
+        submit_data$review_q_pcmk <- if (!is.null(pcmk$reached_previous)) as.character(pcmk$reached_previous) else NA
+        submit_data$review_q2_pcmk <- if (!is.null(pcmk$review_text)) as.character(pcmk$review_text) else ""
+        submit_data$goal_pcmk <- if (!is.null(pcmk$subcompetency)) as.character(pcmk$subcompetency) else NA
+        submit_data$goal_level_pcmk <- if (!is.null(pcmk$target_level)) as.character(pcmk$target_level) else NA
+        submit_data$goal_level_r_pcmk <- if (!is.null(pcmk$milestone_row)) as.character(pcmk$milestone_row) else NA
+        submit_data$how_pcmk <- if (!is.null(pcmk$how_to_achieve)) as.character(pcmk$how_to_achieve) else ""
+      }
+
+      # SBP/PBLI domain
+      if ("sbppbl" %in% names(all_responses)) {
+        sbppbl <- all_responses$sbppbl
+        submit_data$prior_goal_sbppbl <- get_prev_goal("goal_sbppbl")
+        submit_data$review_q_sbppbl <- if (!is.null(sbppbl$reached_previous)) as.character(sbppbl$reached_previous) else NA
+        submit_data$review_q2_sbppbl <- if (!is.null(sbppbl$review_text)) as.character(sbppbl$review_text) else ""
+        submit_data$goal_sbppbl <- if (!is.null(sbppbl$subcompetency)) as.character(sbppbl$subcompetency) else NA
+        submit_data$goal_level_sbppbl <- if (!is.null(sbppbl$target_level)) as.character(sbppbl$target_level) else NA
+        submit_data$goal_r_sbppbl <- if (!is.null(sbppbl$milestone_row)) as.character(sbppbl$milestone_row) else NA
+        submit_data$how_sbppbl <- if (!is.null(sbppbl$how_to_achieve)) as.character(sbppbl$how_to_achieve) else ""
+      }
+
+      # PROF/ICS domain
+      if ("profics" %in% names(all_responses)) {
+        profics <- all_responses$profics
+        submit_data$prior_goal_profics <- get_prev_goal("goal_subcomp_profics")
+        submit_data$review_q_profics <- if (!is.null(profics$reached_previous)) as.character(profics$reached_previous) else NA
+        submit_data$review_q2_profics <- if (!is.null(profics$review_text)) as.character(profics$review_text) else ""
+        submit_data$goal_subcomp_profics <- if (!is.null(profics$subcompetency)) as.character(profics$subcompetency) else NA
+        submit_data$goal_level_profics <- if (!is.null(profics$target_level)) as.character(profics$target_level) else NA
+        submit_data$goal_r_profics <- if (!is.null(profics$milestone_row)) as.character(profics$milestone_row) else NA
+        submit_data$how_profics <- if (!is.null(profics$how_to_achieve)) as.character(profics$how_to_achieve) else ""
+      }
+
+      # Submit to REDCap
+      result <- tryCatch({
+        result_obj <- REDCapR::redcap_write_oneshot(
+          ds = submit_data,
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token
+        )
+
+        if (result_obj$success) {
+          list(success = TRUE, message = "Goals saved successfully!")
+        } else {
+          list(success = FALSE, message = result_obj$outcome_message)
+        }
+      }, error = function(e) {
+        list(success = FALSE, message = paste("Error:", e$message))
+      })
+
+      # Show result
+      if (result$success) {
+        showNotification(result$message, type = "message", duration = 5)
+        message("ILP submission successful for period ", period_num)
+      } else {
+        showNotification(
+          paste("Error submitting goals:", result$message),
+          type = "error",
+          duration = 10
+        )
+        message("ERROR in ILP submission: ", result$message)
+      }
+
       message("All responses: ", paste(capture.output(str(responses())), collapse = "\n"))
-      
-      # TODO: Add REDCap submission logic here
     })
     
     # Return module outputs
