@@ -24,7 +24,7 @@ mod_assessment_wrapper_ui <- function(id) {
   # Assessment progress charts
   gmed::assessment_viz_ui(ns("charts"), title = "Assessment Progress"),
 
-  # Reflection section
+  # Reflection section - MOVED to be right after Assessment Progress
   div(
     class = "card mt-4",
     div(
@@ -79,10 +79,9 @@ mod_assessment_wrapper_ui <- function(id) {
       # Status message
       uiOutput(ns("submit_status"))
     )
-  )
-),
-  
-    # Custom detail viz from gmed (replaces default detail viz)
+  ),
+
+  # Custom detail viz from gmed (replaces default detail viz)
   gmed::mod_assessment_detail_custom_ui(ns("custom_detail")),
 
   # Custom data display for selected evaluation (NEW!)
@@ -94,10 +93,45 @@ mod_assessment_wrapper_ui <- function(id) {
   # Questions/conference attendance
   gmed::mod_questions_viz_ui(ns("questions"), title = "Conference Attendance by Rotation"),
 
-  # Plus/Delta feedback table
-  gmed::mod_plus_delta_table_ui(ns("plus_delta"), title = "Plus / Delta Feedback")
-  
-  
+  # Plus/Delta feedback table - NOW COLLAPSIBLE (closed by default)
+  div(
+    class = "card mt-4",
+    div(
+      class = "card-header",
+      tags$a(
+        href = paste0("#", ns("plus_delta_collapse")),
+        `data-toggle` = "collapse",
+        class = "d-flex justify-content-between align-items-center text-decoration-none",
+        h4(
+          class = "mb-0",
+          icon("chevron-right", class = "toggle-icon"),
+          " Plus / Delta Feedback"
+        )
+      )
+    ),
+    div(
+      id = ns("plus_delta_collapse"),
+      class = "collapse",
+      div(
+        class = "card-body",
+        gmed::mod_plus_delta_table_ui(ns("plus_delta"), title = NULL)
+      )
+    )
+  ),
+
+  # Add custom CSS for toggle icon rotation
+  tags$head(
+    tags$style(HTML("
+      .toggle-icon {
+        transition: transform 0.3s ease;
+        display: inline-block;
+      }
+      .collapse.show + .card-body .toggle-icon,
+      [aria-expanded='true'] .toggle-icon {
+        transform: rotate(90deg);
+      }
+    "))
+  )
 
 }
 
