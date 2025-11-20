@@ -13,15 +13,18 @@ mod_program_feedback_ui <- function(id) {
   tagList(
     div(
       class = "section-container",
-      
+
       # Header with instructions
       div(
         class = "alert alert-info",
         h4(icon("comments"), " Program Feedback"),
-        p("Please provide feedback to the program. This data is collated anonymously and reviewed by the Program Evaluation Committee (PEC). 
+        p("Please provide feedback to the program. This data is collated anonymously and reviewed by the Program Evaluation Committee (PEC).
           As part of that review, we use AI to find common themes for the PEC to review as well."),
         p(strong("While any feedback is helpful, specific scenarios and suggestions for improvement are more helpful."))
       ),
+
+      # Display previous period feedback
+      uiOutput(ns("previous_feedback_display")),
       
       # Question 1: Plus
       div(
@@ -108,38 +111,88 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       save_in_progress = FALSE,
       last_save_time = NULL
     )
-    
-    # Load existing data when resident changes
-    # Load existing data when resident changes
+
+    # Display previous period feedback
+    output$previous_feedback_display <- renderUI({
+      req(rdm_data(), period, record_id())
+
+      gmed::display_program_feedback(
+        rdm_data = rdm_data(),
+        record_id = record_id(),
+        current_period = if (is.reactive(period)) period() else period
+      )
+    })
+
+    # Period number to name mapping
+    period_num_to_name <- c(
+      "7" = "Entering Residency",
+      "1" = "Mid Intern",
+      "2" = "End Intern",
+      "3" = "Mid PGY2",
+      "4" = "End PGY2",
+      "5" = "Mid PGY3",
+      "6" = "Graduating"
+    )
+
+    period_name_to_num <- c(
+      "Entering Residency" = 7,
+      "Mid Intern" = 1,
+      "End Intern" = 2,
+      "Mid PGY2" = 3,
+      "End PGY2" = 4,
+      "Mid PGY3" = 5,
+      "Graduating" = 6,
+      "Graduation" = 6
+    )
+
+    # Load existing data for CURRENT period when resident/period changes
     observe({
-      req(rdm_data(), record_id())
-      
-      # Get s_eval form data for this resident
+      req(rdm_data(), record_id(), period)
+
+      # Convert period to number
+      current_period_num <- if (is.reactive(period)) {
+        p <- period()
+        if (is.numeric(p)) p
+        else if (is.list(p) && "period_number" %in% names(p)) p$period_number
+        else if (is.character(p)) period_name_to_num[p] %||% as.numeric(p)
+        else as.numeric(p)
+      } else {
+        if (is.numeric(period)) period
+        else if (is.list(period) && "period_number" %in% names(period)) period$period_number
+        else if (is.character(period)) period_name_to_num[period] %||% as.numeric(period)
+        else as.numeric(period)
+      }
+
+      # Get expected period name for this period number
+      current_period_name <- period_num_to_name[as.character(current_period_num)]
+
+      message("DEBUG: Loading data for period ", current_period_num, " (", current_period_name, ")")
+
+      # Get s_eval form data for this resident and period
       if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
-        s_eval_data <- rdm_data()$all_forms$s_eval %>%
-          dplyr::filter(record_id == !!record_id())
-        
-        if (nrow(s_eval_data) > 0) {
-          # Load most recent data
-          latest_data <- s_eval_data %>% 
-            dplyr::filter(!is.na(s_e_period)) %>%
-            dplyr::arrange(desc(redcap_repeat_instance)) %>%
-            dplyr::slice(1)
-          
-          # Update inputs with existing data
-          if (nrow(latest_data) > 0) {
-            if (!is.na(latest_data$s_e_prog_plus) && latest_data$s_e_prog_plus != "") {
-              updateTextAreaInput(session, "s_e_prog_plus", value = latest_data$s_e_prog_plus)
-            }
-            if (!is.na(latest_data$s_e_prog_delta) && latest_data$s_e_prog_delta != "") {
-              updateTextAreaInput(session, "s_e_prog_delta", value = latest_data$s_e_prog_delta)
-            }
-            if (!is.na(latest_data$s_e_progconf) && latest_data$s_e_progconf != "") {
-              updateTextAreaInput(session, "s_e_progconf", value = latest_data$s_e_progconf)
-            }
-            if (!is.na(latest_data$s_e_progfeed) && latest_data$s_e_progfeed != "") {
-              updateTextAreaInput(session, "s_e_progfeed", value = latest_data$s_e_progfeed)
-            }
+        current_data <- rdm_data()$all_forms$s_eval %>%
+          dplyr::filter(
+            record_id == !!record_id(),
+            redcap_repeat_instrument == "s_eval",
+            !is.na(s_e_period),
+            s_e_period == !!current_period_name
+          )
+
+        message("DEBUG: Found ", nrow(current_data), " rows for current period")
+
+        if (nrow(current_data) > 0) {
+          # Update inputs with existing data from CURRENT period
+          if (!is.na(current_data$s_e_prog_plus[1]) && current_data$s_e_prog_plus[1] != "") {
+            updateTextAreaInput(session, "s_e_prog_plus", value = current_data$s_e_prog_plus[1])
+          }
+          if (!is.na(current_data$s_e_prog_delta[1]) && current_data$s_e_prog_delta[1] != "") {
+            updateTextAreaInput(session, "s_e_prog_delta", value = current_data$s_e_prog_delta[1])
+          }
+          if (!is.na(current_data$s_e_progconf[1]) && current_data$s_e_progconf[1] != "") {
+            updateTextAreaInput(session, "s_e_progconf", value = current_data$s_e_progconf[1])
+          }
+          if (!is.na(current_data$s_e_progfeed[1]) && current_data$s_e_progfeed[1] != "") {
+            updateTextAreaInput(session, "s_e_progfeed", value = current_data$s_e_progfeed[1])
           }
         }
       }

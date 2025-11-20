@@ -52,12 +52,15 @@ tryCatch({
   library(gmed)
   cat("✓ Package loads successfully\n")
 
-  # Check if the career planning function exists
+  # Check if the display functions exist
   if (exists("display_career_planning", where = "package:gmed")) {
     cat("✓ display_career_planning() function found\n")
   }
   if (exists("display_wellness", where = "package:gmed")) {
     cat("✓ display_wellness() function found\n")
+  }
+  if (exists("display_program_feedback", where = "package:gmed")) {
+    cat("✓ display_program_feedback() function found\n")
   }
 }, error = function(e) {
   cat("Error loading package: ", e$message, "\n")
