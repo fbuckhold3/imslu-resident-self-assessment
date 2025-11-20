@@ -420,9 +420,6 @@ gmed::mod_assessment_data_display_server(
         as.numeric(current_period)
       }
 
-      # Get period name for s_e_period field
-      period_name <- period_num_to_name[as.character(period_number)]
-
       # Prepare submission data as data.frame (not list!)
       submit_data <- data.frame(
         record_id = record_id(),
@@ -430,7 +427,7 @@ gmed::mod_assessment_data_display_server(
         redcap_repeat_instance = period_number,
         s_e_plus = input$s_e_plus %||% "",
         s_e_delta = input$s_e_delta %||% "",
-        s_e_period = period_name,  # Period NAME not number
+        s_e_period = as.character(period_number),  # Period number as string (e.g., "5")
         s_e_date = format(Sys.Date(), "%Y-%m-%d"),
         stringsAsFactors = FALSE
       )
