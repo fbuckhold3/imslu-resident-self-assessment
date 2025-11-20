@@ -388,31 +388,24 @@ output$previous_career_display <- renderUI({
         showNotification("Please indicate if you're interested in program tracks", type = "error")
         return()
       }
-
-      # Convert period to number
-      period_num <- if (is.numeric(period())) {
-        period()
-      } else {
-        # Convert period name to number if needed
-        period_map <- c(
-          "Entering Residency" = 7,
-          "Mid Intern" = 1,
-          "End Intern" = 2,
-          "Mid PGY2" = 3,
-          "End PGY2" = 4,
-          "Mid PGY3" = 5,
-          "Graduating" = 6
-        )
-        period_map[period()]
-      }
-
-      message("=== CAREER PLANNING SUBMISSION ===")
-      message("Period: ", period())
-      message("Period number: ", period_num)
-      message("Record ID: ", record_id())
-
-      # Prepare data for submission - Build data frame with proper checkbox expansion
-      submit_data <- data.frame(
+      
+      # Prepare data for submission - FIXED: s_e_well not s_e_wellness
+      submit_data <- list(
+        s_e_well = input$wellness,
+        s_e_career_path = if (!is.null(input$career_path)) paste(input$career_path, collapse = ",") else "",
+        s_e_career_oth = if (!is.null(input$career_path) && "4" %in% input$career_path) input$career_oth else "",
+        s_e_fellow = if (!is.null(input$fellow)) paste(input$fellow, collapse = ",") else "",
+        s_e_fellow_oth = if (!is.null(input$fellow) && "1" %in% input$fellow) input$fellow_oth else "",
+        s_e_track = input$track,
+        s_e_track_type = if (input$track == "1" && !is.null(input$track_type)) {
+          paste(input$track_type, collapse = ",")
+        } else "",
+        s_e_period = as.character(period()),
+        s_e_date = format(Sys.Date(), "%Y-%m-%d")
+      )
+      
+      # Submit to REDCap
+      result <- submit_self_eval_data(
         record_id = record_id(),
         redcap_repeat_instrument = "s_eval",
         redcap_repeat_instance = period_num,

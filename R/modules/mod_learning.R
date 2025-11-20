@@ -497,6 +497,8 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         record_id = record_id(),
         redcap_repeat_instrument = "s_eval",
         redcap_repeat_instance = period_info(),
+        s_e_period = as.character(period_info()),
+        s_e_date = format(Sys.Date(), "%Y-%m-%d"),
         stringsAsFactors = FALSE
       )
       

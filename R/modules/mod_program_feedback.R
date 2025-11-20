@@ -260,13 +260,15 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       }
 
       message("Final period_number: ", period_number)
-
-      # Build data frame for submission (like Career Planning module)
-      submit_data <- data.frame(
-        record_id = record_id(),
-        redcap_repeat_instrument = "s_eval",
-        redcap_repeat_instance = period_number,
-        stringsAsFactors = FALSE
+      
+      # Prepare field data
+      feedback_data <- list(
+        s_e_prog_plus = input$s_e_prog_plus %||% "",
+        s_e_prog_delta = input$s_e_prog_delta %||% "",
+        s_e_progconf = input$s_e_progconf %||% "",
+        s_e_progfeed = input$s_e_progfeed %||% "",
+        s_e_period = as.character(period_number),
+        s_e_date = format(Sys.Date(), "%Y-%m-%d")
       )
 
       # Add feedback fields
