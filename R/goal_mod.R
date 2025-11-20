@@ -122,8 +122,8 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
 #       if (!is.null(ms_data$data)) {
 #         message("  Data rows: ", nrow(ms_data$data))
 #         message("  Milestone cols: ", length(ms_data$milestone_cols))
-      }
-      
+#       }
+
       return(ms_data)
     })
     
