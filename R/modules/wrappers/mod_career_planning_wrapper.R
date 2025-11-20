@@ -156,16 +156,16 @@ output$previous_career_display <- renderUI({
   req(rdm_data(), period(), record_id())
 
   # DEBUG: Print what we're passing to the function
-  message("=== CAREER PLANNING WRAPPER DEBUG ===")
-  message("record_id: ", record_id())
-  message("period type: ", class(period()))
+# message("=== CAREER PLANNING WRAPPER DEBUG ===")
+# message("record_id: ", record_id())
+# message("period type: ", class(period()))
   if (is.list(period()) && "period_number" %in% names(period())) {
-    message("period_number: ", period()$period_number)
+# message("period_number: ", period()$period_number)
   } else {
-    message("period value: ", period())
+# message("period value: ", period())
   }
-  message("data_dict available: ", !is.null(data_dict))
-  message("rdm_data structure: ", paste(names(rdm_data()), collapse = ", "))
+# message("data_dict available: ", !is.null(data_dict))
+# message("rdm_data structure: ", paste(names(rdm_data()), collapse = ", "))
 
   gmed::display_career_planning(
     rdm_data = rdm_data(),
@@ -389,26 +389,13 @@ output$previous_career_display <- renderUI({
         return()
       }
       
-      # Prepare data for submission - FIXED: s_e_well not s_e_wellness
-      submit_data <- list(
-        s_e_well = input$wellness,
-        s_e_career_path = if (!is.null(input$career_path)) paste(input$career_path, collapse = ",") else "",
-        s_e_career_oth = if (!is.null(input$career_path) && "4" %in% input$career_path) input$career_oth else "",
-        s_e_fellow = if (!is.null(input$fellow)) paste(input$fellow, collapse = ",") else "",
-        s_e_fellow_oth = if (!is.null(input$fellow) && "1" %in% input$fellow) input$fellow_oth else "",
-        s_e_track = input$track,
-        s_e_track_type = if (input$track == "1" && !is.null(input$track_type)) {
-          paste(input$track_type, collapse = ",")
-        } else "",
-        s_e_period = as.character(period()),
-        s_e_date = format(Sys.Date(), "%Y-%m-%d")
-      )
-      
-      # Submit to REDCap
-      result <- submit_self_eval_data(
+      # Prepare data for submission as data.frame
+      submit_data <- data.frame(
         record_id = record_id(),
         redcap_repeat_instrument = "s_eval",
         redcap_repeat_instance = period_num,
+        s_e_period = as.character(period_num),
+        s_e_date = format(Sys.Date(), "%Y-%m-%d"),
         stringsAsFactors = FALSE
       )
 
@@ -455,8 +442,6 @@ output$previous_career_display <- renderUI({
       # Discussion topics
       submit_data$s_e_discussion <- input$discussion %||% ""
 
-      message("Submitting to REDCap with ", ncol(submit_data), " fields")
-
       # Submit to REDCap using REDCapR directly (like Learning module)
       result <- tryCatch({
         result_obj <- REDCapR::redcap_write_oneshot(
@@ -471,7 +456,6 @@ output$previous_career_display <- renderUI({
           list(success = FALSE, message = result_obj$outcome_message)
         }
       }, error = function(e) {
-        message("ERROR in submission: ", e$message)
         list(success = FALSE, message = paste("R error:", e$message))
       })
 

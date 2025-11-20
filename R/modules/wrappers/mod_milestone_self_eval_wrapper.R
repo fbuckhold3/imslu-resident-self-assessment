@@ -88,7 +88,7 @@ mod_milestone_entry_server <- function(id, record_id, period, rdm_data) {
           verbose = FALSE
         )
       }, error = function(e) {
-        message("Error creating milestone workflow: ", e$message)
+# message("Error creating milestone workflow: ", e$message)
         NULL
       })
       
@@ -147,53 +147,53 @@ mod_milestone_entry_server <- function(id, record_id, period, rdm_data) {
     
     # Debug 1: Check if milestone_results loads
     observe({
-      message("=== MILESTONE RESULTS CHECK ===")
-      message("milestone_results exists: ", !is.null(milestone_results()))
+# message("=== MILESTONE RESULTS CHECK ===")
+# message("milestone_results exists: ", !is.null(milestone_results()))
       
       if (!is.null(milestone_results())) {
-        message("Configs available: ", paste(names(milestone_results()), collapse = ", "))
+# message("Configs available: ", paste(names(milestone_results()), collapse = ", "))
       }
     })
     
     # Debug 2: Check self milestone data
     observe({
-      message("=== SELF MILESTONE DATA CHECK ===")
+# message("=== SELF MILESTONE DATA CHECK ===")
       
       self_data <- self_milestone_data()
-      message("self_milestone_data exists: ", !is.null(self_data))
+# message("self_milestone_data exists: ", !is.null(self_data))
       
       if (!is.null(self_data)) {
-        message("Has data component: ", !is.null(self_data$data))
-        message("Has medians component: ", !is.null(self_data$medians))
+# message("Has data component: ", !is.null(self_data$data))
+# message("Has medians component: ", !is.null(self_data$medians))
         
         if (!is.null(self_data$data)) {
-          message("Data rows: ", nrow(self_data$data))
-          message("Data columns: ", paste(head(names(self_data$data), 10), collapse = ", "))
+# message("Data rows: ", nrow(self_data$data))
+# message("Data columns: ", paste(head(names(self_data$data), 10), collapse = ", "))
         }
       }
     })
     
     # Debug 3: Check ACGME milestone data
     observe({
-      message("=== ACGME MILESTONE DATA CHECK ===")
+# message("=== ACGME MILESTONE DATA CHECK ===")
       
       acgme_data <- acgme_milestone_data()
-      message("acgme_milestone_data exists: ", !is.null(acgme_data))
+# message("acgme_milestone_data exists: ", !is.null(acgme_data))
       
       if (!is.null(acgme_data)) {
-        message("Has data component: ", !is.null(acgme_data$data))
-        message("Has medians component: ", !is.null(acgme_data$medians))
+# message("Has data component: ", !is.null(acgme_data$data))
+# message("Has medians component: ", !is.null(acgme_data$medians))
         
         if (!is.null(acgme_data$data)) {
-          message("Data rows: ", nrow(acgme_data$data))
+# message("Data rows: ", nrow(acgme_data$data))
         }
       }
     })
     
     # Debug 4: Check record_id
     observe({
-      message("=== RECORD ID CHECK ===")
-      message("record_id: ", record_id())
+# message("=== RECORD ID CHECK ===")
+# message("record_id: ", record_id())
     })
     
     # Debug 5: Check for resident's data
@@ -202,27 +202,27 @@ mod_milestone_entry_server <- function(id, record_id, period, rdm_data) {
       
       data <- self_milestone_data()$data
       
-      message("=== RESIDENT MILESTONE DATA ===")
-      message("Total milestone records: ", nrow(data))
+# message("=== RESIDENT MILESTONE DATA ===")
+# message("Total milestone records: ", nrow(data))
       
       if (!is.null(data) && nrow(data) > 0) {
-        message("Unique residents in data: ", paste(head(unique(data$record_id), 5), collapse = ", "))
+# message("Unique residents in data: ", paste(head(unique(data$record_id), 5), collapse = ", "))
         
         resident_data <- data %>%
           dplyr::filter(record_id == !!record_id())
         
-        message("Resident ", record_id(), " has ", nrow(resident_data), " self-milestone records")
+# message("Resident ", record_id(), " has ", nrow(resident_data), " self-milestone records")
         
         if (nrow(resident_data) > 0) {
-          message("Periods in data (prog_mile_period): ", 
+# message("Periods in data (prog_mile_period): ", 
                   paste(unique(resident_data$prog_mile_period), collapse = ", "))
           if ("period_name" %in% names(resident_data)) {
-            message("Period names in data (period_name): ", 
+# message("Period names in data (period_name): ", 
                     paste(unique(resident_data$period_name), collapse = ", "))
           }
-          message("Previous period looking for: ", previous_period())
+# message("Previous period looking for: ", previous_period())
         } else {
-          message("No data found for resident ", record_id())
+# message("No data found for resident ", record_id())
         }
       }
     })
@@ -263,7 +263,7 @@ output$prev_self_plot <- plotly::renderPlotly({
     return(dashboard$spider_plot)
     
   }, error = function(e) {
-    message("Error rendering self plot: ", e$message)
+# message("Error rendering self plot: ", e$message)
     return(plotly::plotly_empty() %>%
              plotly::add_annotations(
                text = "No data available",
@@ -301,7 +301,7 @@ output$prev_acgme_plot <- plotly::renderPlotly({
     return(dashboard$spider_plot)
     
   }, error = function(e) {
-    message("Error rendering ACGME plot: ", e$message)
+# message("Error rendering ACGME plot: ", e$message)
     return(plotly::plotly_empty() %>%
              plotly::add_annotations(
                text = "No data available",

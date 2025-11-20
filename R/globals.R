@@ -78,7 +78,7 @@ app_data_store <- NULL
 
 load_app_data <- function() {
   if (is.null(app_data_store)) {
-    message("=== Loading RDM 2.0 Data ===")
+# message("=== Loading RDM 2.0 Data ===")
     tryCatch({
       complete_data <- gmed::load_rdm_complete(
         rdm_token = app_config$rdm_token,
@@ -93,9 +93,9 @@ load_app_data <- function() {
       
       app_data_store <<- complete_data
       
-      message("Data loaded successfully!")
-      message("  - Residents: ", nrow(complete_data$residents))
-      message("  - Assessment records: ", nrow(complete_data$assessment))
+# message("Data loaded successfully!")
+# message("  - Residents: ", nrow(complete_data$residents))
+# message("  - Assessment records: ", nrow(complete_data$assessment))
       
       return(app_data_store)
       
@@ -111,7 +111,7 @@ load_app_data <- function() {
 # ============================================================================
 # STARTUP MESSAGE - Print LAST
 # ============================================================================
-message("=== RDM 2.0 Self-Assessment App ===")
-message("Debug mode: ", app_config$debug_mode)
-message("Ready to load data on first access")
+# message("=== RDM 2.0 Self-Assessment App ===")
+# message("Debug mode: ", app_config$debug_mode)
+# message("Ready to load data on first access")
 

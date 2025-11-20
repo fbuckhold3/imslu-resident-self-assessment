@@ -57,7 +57,7 @@ server <- function(input, output, session) {
           # Hide the loading overlay
           shinyjs::hide("loading_overlay", anim = TRUE, animType = "fade")
 
-          message("App data loaded successfully on startup")
+#           message("App data loaded successfully on startup")
 
         }, error = function(e) {
           # Show error message
@@ -149,7 +149,7 @@ active_period <- reactive({
   
   # Validate type
   if (is.na(type_code) || !type_code %in% c(1, 2)) {
-    message("Invalid type code: ", resident_info$type)
+#     message("Invalid type code: ", resident_info$type)
     return(NULL)
   }
   
@@ -160,7 +160,7 @@ active_period <- reactive({
     slice(1)
   
   if (nrow(grad_yr_field) == 0) {
-    message("grad_yr field not found in data dictionary")
+#     message("grad_yr field not found in data dictionary")
     return(NULL)
   }
   
@@ -173,27 +173,27 @@ active_period <- reactive({
   grad_yr_actual <- as.numeric(grad_yr_choices[grad_yr_code])
   
   if (is.na(grad_yr_actual) || grad_yr_actual < 2020 || grad_yr_actual > 2040) {
-    message("Invalid grad_yr after translation. Code: ", grad_yr_code, " -> Year: ", grad_yr_actual)
+# message("Invalid grad_yr after translation. Code: ", grad_yr_code, " -> Year: ", grad_yr_actual)
     return(NULL)
   }
   
-  message("Translated grad_yr: code ", grad_yr_code, " -> year ", grad_yr_actual)
+# message("Translated grad_yr: code ", grad_yr_code, " -> year ", grad_yr_actual)
   
   # Calculate the period - WITH DEBUG
-  message("About to call calculate_pgy_and_period")
-  message("grad_yr_actual: ", grad_yr_actual)
-  message("type_code: ", type_code)
+#   message("About to call calculate_pgy_and_period")
+#   message("grad_yr_actual: ", grad_yr_actual)
+#   message("type_code: ", type_code)
   
   detected_period <- tryCatch({
-    message("Calling with: grad_yr=", grad_yr_actual, ", type=", type_code)
+# message("Calling with: grad_yr=", grad_yr_actual, ", type=", type_code)
     gmed::calculate_pgy_and_period(
       grad_yr = grad_yr_actual,
       type = type_code,
       current_date = Sys.Date()
     )
   }, error = function(e) {
-    message("FULL ERROR: ", e$message)
-    message("ERROR CALL: ", deparse(e$call))
+#     message("FULL ERROR: ", e$message)
+#     message("ERROR CALL: ", deparse(e$call))
     NULL
   })
   
@@ -744,27 +744,27 @@ observe({
       slice(1)
     
     if (nrow(resident_info) > 0) {
-      message("=== PERIOD DETECTION TEST ===")
-      message("Resident: ", values$current_resident)
-      message("Type: ", resident_info$type)
-      message("Grad Year: ", resident_info$grad_yr)
-      message("Period Number: ", period_info$period_number)
-      message("Period Name: ", period_info$period_name)
-      message("PGY Year: ", period_info$pgy_year)
+# message("=== PERIOD DETECTION TEST ===")
+# message("Resident: ", values$current_resident)
+# message("Type: ", resident_info$type)
+# message("Grad Year: ", resident_info$grad_yr)
+# message("Period Number: ", period_info$period_number)
+# message("Period Name: ", period_info$period_name)
+# message("PGY Year: ", period_info$pgy_year)
       
       config <- get_period_structure(period_info$period_number)
-      message("Modules for this period: ", paste(config$modules, collapse = ", "))
+# message("Modules for this period: ", paste(config$modules, collapse = ", "))
     }
   })
 
   # Add this observe block in server.R
 observe({
   if (!is.null(input$nav_intro_next) && input$nav_intro_next > 0) {
-    message("Button clicked! Count: ", input$nav_intro_next)
-    message("Authenticated: ", values$authenticated)
-    message("Active period exists: ", !is.null(active_period()))
+# message("Button clicked! Count: ", input$nav_intro_next)
+# message("Authenticated: ", values$authenticated)
+# message("Active period exists: ", !is.null(active_period()))
     if (!is.null(active_period())) {
-      message("Period number: ", active_period()$period_number)
+# message("Period number: ", active_period()$period_number)
     }
   }
 })

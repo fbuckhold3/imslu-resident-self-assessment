@@ -64,14 +64,14 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
       req(rdm_data())
       app_data <- rdm_data()
 
-      message("=== GOAL MODULE: Getting Milestone Data ===")
+# message("=== GOAL MODULE: Getting Milestone Data ===")
 
       # PRIORITY 1: Check if milestone_output from this session exists
       if (!is.null(milestone_output) && is.function(milestone_output)) {
         session_milestone <- tryCatch(milestone_output(), error = function(e) NULL)
 
         if (!is.null(session_milestone) && !is.null(session_milestone$scores)) {
-          message("Using milestone data from THIS SESSION'S self-assessment")
+# message("Using milestone data from THIS SESSION'S self-assessment")
 
           # Convert scores to data format expected by spider plot
           # scores() returns a named list like: list(PC1 = 5, PC2 = 3, ...)
@@ -94,8 +94,8 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
             milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$",
                                   names(resident_row), value = TRUE)
 
-            message("  Created data from session scores")
-            message("  Milestone cols: ", length(milestone_cols))
+# message("  Created data from session scores")
+# message("  Milestone cols: ", length(milestone_cols))
 
             return(list(
               data = resident_row,
@@ -107,14 +107,14 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
       }
 
       # PRIORITY 2: Use PREVIOUS period's ACGME milestone data
-      message("No session milestone data - looking for PREVIOUS period ACGME data")
+# message("No session milestone data - looking for PREVIOUS period ACGME data")
 
       # Calculate previous period
       current_period <- if (is.function(period)) period() else period
       prev_period <- current_period - 1
 
       if (prev_period >= 1 && !is.null(app_data$milestone_workflow)) {
-        message("Looking for ACGME milestones from period ", prev_period)
+# message("Looking for ACGME milestones from period ", prev_period)
 
         # Look for ACGME configuration
         for (config_name in names(app_data$milestone_workflow)) {
@@ -137,8 +137,8 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
                 )
 
               if (nrow(prev_data) > 0) {
-                message("Using ACGME milestones from period ", prev_period)
-                message("  Data rows: ", nrow(prev_data))
+# message("Using ACGME milestones from period ", prev_period)
+# message("  Data rows: ", nrow(prev_data))
 
                 # Get milestone columns - try different field names
                 milestone_cols <- config$score_columns
@@ -152,9 +152,9 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
                                         names(prev_data), value = TRUE)
                 }
 
-                message("  Milestone cols: ", length(milestone_cols))
+# message("  Milestone cols: ", length(milestone_cols))
                 if (length(milestone_cols) > 0) {
-                  message("  Sample cols: ", paste(head(milestone_cols, 3), collapse = ", "))
+# message("  Sample cols: ", paste(head(milestone_cols, 3), collapse = ", "))
                 }
 
                 return(list(
@@ -175,9 +175,9 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
             config <- app_data$milestone_workflow[[config_name]]
 
             if (!is.null(config$data) && nrow(config$data) > 0) {
-              message("Using milestone config (fallback): ", config_name)
-              message("  Data rows: ", nrow(config$data))
-              message("  Milestone cols: ", length(config$score_columns))
+# message("Using milestone config (fallback): ", config_name)
+# message("  Data rows: ", nrow(config$data))
+# message("  Milestone cols: ", length(config$score_columns))
 
               return(list(
                 data = config$data,
@@ -189,7 +189,7 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
         }
       }
 
-      message("No milestone data found")
+# message("No milestone data found")
       return(list(data = data.frame(), milestone_cols = character(0), medians = NULL))
     })
     

@@ -69,13 +69,13 @@ if (!is.null(resident_data$graduation_year) &&
     }
     
   }, error = function(e) {
-    message("Period calculation failed: ", e$message)
+# message("Period calculation failed: ", e$message)
   })
 }
   }
   
   # Default to Period 7 (safest for new/unknown residents)
-  message("Using default Period 7 for resident ", 
+# message("Using default Period 7 for resident ", 
           resident_data$record_id %||% "unknown")
   
   config <- get_period_structure(7)

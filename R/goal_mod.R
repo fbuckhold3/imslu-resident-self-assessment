@@ -116,12 +116,12 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         current_milestone_data
       }
       
-      message("=== Milestone data check ===")
-      message("  Is list: ", is.list(ms_data))
-      message("  Has data: ", !is.null(ms_data$data))
-      if (!is.null(ms_data$data)) {
-        message("  Data rows: ", nrow(ms_data$data))
-        message("  Milestone cols: ", length(ms_data$milestone_cols))
+#       message("=== Milestone data check ===")
+#       message("  Is list: ", is.list(ms_data))
+#       message("  Has data: ", !is.null(ms_data$data))
+#       if (!is.null(ms_data$data)) {
+#         message("  Data rows: ", nrow(ms_data$data))
+#         message("  Milestone cols: ", length(ms_data$milestone_cols))
       }
       
       return(ms_data)
@@ -134,7 +134,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       ilp <- if (is.function(ilp_data)) ilp_data() else ilp_data
       
       if (is.null(ilp) || nrow(ilp) == 0) {
-        message("No ILP data found")
+#         message("No ILP data found")
         return()
       }
       
@@ -148,7 +148,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         dplyr::slice(1)
       
       if (nrow(prev_ilp) > 0) {
-        message("Found previous ILP data for resident ", rec_id)
+#         message("Found previous ILP data for resident ", rec_id)
         previous_goals(prev_ilp)
       }
     })
@@ -158,18 +158,18 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       ms_data <- milestone_data()
 
       # DEBUG: Check median data structure
-      cat("\n=== MILESTONE DATA STRUCTURE ===\n")
-      cat("ms_data is NULL:", is.null(ms_data), "\n")
-      if (!is.null(ms_data)) {
-        cat("ms_data$medians is NULL:", is.null(ms_data$medians), "\n")
-        if (!is.null(ms_data$medians)) {
-          cat("Median data columns:\n")
-          print(names(ms_data$medians))
-          cat("\nMedian data rows:", nrow(ms_data$medians), "\n")
-          if (nrow(ms_data$medians) > 0) {
-            cat("First row of median data:\n")
-            print(head(ms_data$medians, 1))
-          }
+#       cat("\n=== MILESTONE DATA STRUCTURE ===\n")
+#       cat("ms_data is NULL:", is.null(ms_data), "\n")
+#       if (!is.null(ms_data)) {
+#         cat("ms_data$medians is NULL:", is.null(ms_data$medians), "\n")
+#         if (!is.null(ms_data$medians)) {
+#           cat("Median data columns:\n")
+#           print(names(ms_data$medians))
+#           cat("\nMedian data rows:", nrow(ms_data$medians), "\n")
+#           if (nrow(ms_data$medians) > 0) {
+#             cat("First row of median data:\n")
+#             print(head(ms_data$medians, 1))
+#           }
         }
       }
 
@@ -256,10 +256,10 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         }
       }
 
-      message("=== SPIDER PLOT DATA ===")
-      message("Resident data rows after filtering: ", nrow(resident_data))
-      message("Milestone columns: ", length(milestone_cols))
-      message("Sample milestone cols: ", paste(head(milestone_cols, 3), collapse = ", "))
+#       message("=== SPIDER PLOT DATA ===")
+#       message("Resident data rows after filtering: ", nrow(resident_data))
+#       message("Milestone columns: ", length(milestone_cols))
+#       message("Sample milestone cols: ", paste(head(milestone_cols, 3), collapse = ", "))
 
       # Detect milestone type from column names
       milestone_type <- if (any(grepl("^acgme_", milestone_cols))) {
@@ -270,12 +270,12 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         "program"
       }
 
-      message("Using milestone type: ", milestone_type)
+#       message("Using milestone type: ", milestone_type)
 
       # Debug: Check what columns exist in resident_data
-      message("Resident data columns: ", paste(names(resident_data), collapse = ", "))
-      message("Resident data first row sample:")
-      print(head(resident_data[, 1:min(5, ncol(resident_data))], 1))
+#       message("Resident data columns: ", paste(names(resident_data), collapse = ", "))
+#       message("Resident data first row sample:")
+#       print(head(resident_data[, 1:min(5, ncol(resident_data))], 1))
 
       # Determine the correct period_text to pass to gmed
       # Use the period_name from the data if it exists, otherwise use current_period
@@ -284,7 +284,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       if ("period_name" %in% names(resident_data) && !is.na(resident_data$period_name[1])) {
         # Use the period name from the actual data
         plot_period_text <- resident_data$period_name[1]
-        message("Using period_name from data: ", plot_period_text)
+#         message("Using period_name from data: ", plot_period_text)
       } else if ("prog_mile_period" %in% names(resident_data) || "acgme_mile_period" %in% names(resident_data)) {
         # Try to get period name from period number
         period_field <- if ("prog_mile_period" %in% names(resident_data)) "prog_mile_period" else "acgme_mile_period"
@@ -294,36 +294,36 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
           period_config <- get_period_structure(period_num)
           plot_period_text <- period_config$period_name
           resident_data$period_name <- plot_period_text
-          message("Converted period ", period_num, " to name: ", plot_period_text)
+#           message("Converted period ", period_num, " to name: ", plot_period_text)
         }
       }
 
       # Get median data if available - filter by the ACTUAL period of the data
       median_data <- NULL
 
-      message("=== CHECKING FOR MEDIAN DATA ===")
-      message("ms_data$medians is NULL: ", is.null(ms_data$medians))
+# message("=== CHECKING FOR MEDIAN DATA ===")
+# message("ms_data$medians is NULL: ", is.null(ms_data$medians))
       if (!is.null(ms_data$medians)) {
-        message("ms_data$medians rows: ", nrow(ms_data$medians))
-        message("ms_data$medians columns: ", paste(names(ms_data$medians), collapse = ", "))
+# message("ms_data$medians rows: ", nrow(ms_data$medians))
+# message("ms_data$medians columns: ", paste(names(ms_data$medians), collapse = ", "))
         if (nrow(ms_data$medians) > 0) {
-          message("Period names in medians: ", paste(unique(ms_data$medians$period_name), collapse = ", "))
+# message("Period names in medians: ", paste(unique(ms_data$medians$period_name), collapse = ", "))
         }
       }
 
       if (!is.null(ms_data$medians) && nrow(ms_data$medians) > 0) {
-        message("Filtering medians for period: ", plot_period_text)
+# message("Filtering medians for period: ", plot_period_text)
         median_data <- ms_data$medians %>%
           dplyr::filter(period_name == !!plot_period_text)
 
         if (nrow(median_data) == 0) {
-          message("No median data found for period: ", plot_period_text)
+# message("No median data found for period: ", plot_period_text)
           median_data <- NULL
         } else {
-          message("Found median data: ", nrow(median_data), " row(s)")
+# message("Found median data: ", nrow(median_data), " row(s)")
         }
       } else {
-        message("No median data available in milestone workflow")
+# message("No median data available in milestone workflow")
       }
 
       # Ensure 'name' column exists for gmed function (it tries to pull this)
@@ -332,10 +332,10 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
 
       if ("name" %in% names(resident_data) && !is.na(resident_data$name[1]) && resident_data$name[1] != "") {
         resident_name <- resident_data$name[1]
-        message("Using resident name from data: ", resident_name)
+#         message("Using resident name from data: ", resident_name)
       } else {
         resident_data$name <- resident_name
-        message("Added fallback name column: ", resident_name)
+#         message("Added fallback name column: ", resident_name)
       }
 
       # Create resident lookup data frame using record_id
@@ -357,9 +357,9 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
           resident_data = resident_lookup
         )
       }, error = function(e) {
-        message("Spider plot error: ", e$message)
-        message("Error traceback:")
-        print(e)
+#         message("Spider plot error: ", e$message)
+#         message("Error traceback:")
+#         print(e)
         return(NULL)
       })
     })
@@ -544,7 +544,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         return(div(class = "alert alert-warning", "No milestone data available"))
       }
 
-      message("Rendering milestone table for: ", comp_code)
+#       message("Rendering milestone table for: ", comp_code)
 
       # Get milestone table from data dictionary
       table_data <- get_milestone_table_from_dict(comp_code)
@@ -624,12 +624,12 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
           rdm_dict_data
         }
       }, error = function(e) {
-        message("Error getting data dictionary: ", e$message)
+#         message("Error getting data dictionary: ", e$message)
         return(NULL)
       })
 
       if (is.null(dict)) {
-        message("Data dictionary is NULL")
+#         message("Data dictionary is NULL")
         return(NULL)
       }
 
@@ -644,7 +644,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
       # Find milestone row fields: pc1_r1, pc1_r2, etc.
       pattern <- paste0("^", prefix_lower, comp_num, "_r\\d+$")
 
-      message("Looking for pattern: ", pattern, " (comp_code: ", comp_code, ")")
+#       message("Looking for pattern: ", pattern, " (comp_code: ", comp_code, ")")
 
       # Filter for matching fields
       fields <- dict %>%
@@ -652,7 +652,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         dplyr::select(field_name, field_label, select_choices_or_calculations) %>%
         dplyr::arrange(field_name)
 
-      message("Found ", nrow(fields), " matching milestone rows")
+#       message("Found ", nrow(fields), " matching milestone rows")
 
       if (nrow(fields) == 0) {
         return(NULL)
@@ -677,7 +677,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         choices_text <- fields$select_choices_or_calculations[i]
 
         if (is.na(choices_text) || choices_text == "") {
-          message("Row ", i, ": No choices text")
+#           message("Row ", i, ": No choices text")
           next
         }
 
@@ -703,7 +703,7 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         }
       }
 
-      message("Returning table with ", nrow(result), " rows")
+#       message("Returning table with ", nrow(result), " rows")
 
       return(result)
     }
@@ -988,17 +988,17 @@ observe({
       # Show result
       if (result$success) {
         showNotification(result$message, type = "message", duration = 5)
-        message("ILP submission successful for period ", period_num)
+#         message("ILP submission successful for period ", period_num)
       } else {
         showNotification(
           paste("Error submitting goals:", result$message),
           type = "error",
           duration = 10
         )
-        message("ERROR in ILP submission: ", result$message)
+#         message("ERROR in ILP submission: ", result$message)
       }
 
-      message("All responses: ", paste(capture.output(str(responses())), collapse = "\n"))
+#       message("All responses: ", paste(capture.output(str(responses())), collapse = "\n"))
     })
     
     # Return module outputs

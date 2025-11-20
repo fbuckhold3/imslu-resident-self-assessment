@@ -152,7 +152,7 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       # Get expected period name for this period number
       current_period_name <- period_num_to_name[as.character(current_period_num)]
 
-      message("DEBUG: Loading data for period ", current_period_num, " (", current_period_name, ")")
+      # message("DEBUG: Loading data for period ", current_period_num, " (", current_period_name, ")")
 
       # Get s_eval form data for this resident and period
       if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
@@ -164,7 +164,7 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
             s_e_period == !!current_period_name
           )
 
-        message("DEBUG: Found ", nrow(current_data), " rows for current period")
+# message("DEBUG: Found ", nrow(current_data), " rows for current period")
 
         if (nrow(current_data) > 0) {
           # Update inputs with existing data from CURRENT period
@@ -187,41 +187,41 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
     # Save handler
     observeEvent(input$save_feedback, {
 
-      message("========================================")
-      message("PROGRAM FEEDBACK SAVE BUTTON CLICKED")
-      message("========================================")
+      # message("========================================")
+      # message("PROGRAM FEEDBACK SAVE BUTTON CLICKED")
+      # message("========================================")
 
       # Check if we have record_id
       if (is.null(record_id()) || length(record_id()) == 0) {
-        message("ERROR: No record_id available")
+        # message("ERROR: No record_id available")
         showNotification("Error: No record ID", type = "error", duration = 10)
         return()
       }
 
-      message("Record ID: ", record_id())
+      # message("Record ID: ", record_id())
 
       rv$save_in_progress <- TRUE
 
       # Get period info - handle all possible formats
       current_period <- if (is.reactive(period)) {
-        message("Period is reactive, getting value...")
+        # message("Period is reactive, getting value...")
         period()
       } else {
-        message("Period is static")
+        # message("Period is static")
         period
       }
 
-      message("Current period raw: '", current_period, "'")
-      message("Current period class: ", class(current_period))
+      # message("Current period raw: '", current_period, "'")
+      # message("Current period class: ", class(current_period))
 
       # Convert period to number - robust handling
       period_number <- if (is.numeric(current_period)) {
         # Already a number
-        message("Period is numeric: ", current_period)
+        # message("Period is numeric: ", current_period)
         current_period
       } else if (is.list(current_period) && "period_number" %in% names(current_period)) {
         # It's a list from active_period() with period_number field
-        message("Period is list, extracting period_number: ", current_period$period_number)
+        # message("Period is list, extracting period_number: ", current_period$period_number)
         current_period$period_number
       } else if (is.character(current_period)) {
         # It's a period name string
@@ -234,18 +234,18 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
                "Mid PGY3" = 5,
                "Graduating" = 6,
                1)  # Default fallback
-        message("Converted period name to number: ", pn)
+        # message("Converted period name to number: ", pn)
         pn
       } else if (is.null(current_period)) {
-        message("Period is NULL, defaulting to 1")
+        # message("Period is NULL, defaulting to 1")
         1
       } else {
         # Try to coerce to numeric
-        message("Unknown period type, attempting coercion: ", current_period)
+# message("Unknown period type, attempting coercion: ", current_period)
         as.numeric(current_period)
       }
 
-      message("Final period_number: ", period_number)
+      # message("Final period_number: ", period_number)
 
       # Get period name for s_e_period field
       period_name <- period_num_to_name[as.character(period_number)]
@@ -264,12 +264,12 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
         stringsAsFactors = FALSE
       )
 
-      message("Feedback data:")
-      message("  s_e_prog_plus: ", nchar(submit_data$s_e_prog_plus), " chars")
-      message("  s_e_prog_delta: ", nchar(submit_data$s_e_prog_delta), " chars")
-      message("  s_e_progconf: ", nchar(submit_data$s_e_progconf), " chars")
-      message("  s_e_progfeed: ", nchar(submit_data$s_e_progfeed), " chars")
-      message("Submitting to REDCap with instance = ", period_number)
+      # message("Feedback data:")
+      # message("  s_e_prog_plus: ", nchar(submit_data$s_e_prog_plus), " chars")
+      # message("  s_e_prog_delta: ", nchar(submit_data$s_e_prog_delta), " chars")
+      # message("  s_e_progconf: ", nchar(submit_data$s_e_progconf), " chars")
+      # message("  s_e_progfeed: ", nchar(submit_data$s_e_progfeed), " chars")
+      # message("Submitting to REDCap with instance = ", period_number)
 
       # Submit to REDCap using REDCapR directly (like Career Planning module)
       result <- tryCatch({
@@ -285,15 +285,15 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
           list(success = FALSE, message = result_obj$outcome_message)
         }
       }, error = function(e) {
-        message("ERROR in submission: ", e$message)
+        # message("ERROR in submission: ", e$message)
         list(success = FALSE, message = paste("R error:", e$message))
       })
 
       rv$save_in_progress <- FALSE
 
-      message("Submission result received:")
-      message("  Success: ", result$success)
-      message("  Message: ", result$message)
+      # message("Submission result received:")
+# message("  Success: ", result$success)
+# message("  Message: ", result$message)
 
       if (result$success) {
         rv$last_save_time <- Sys.time()
@@ -310,9 +310,9 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
         )
       }
 
-      message("========================================")
-      message("SAVE PROCESS COMPLETE")
-      message("========================================")
+      # message("========================================")
+      # message("SAVE PROCESS COMPLETE")
+      # message("========================================")
     })
     
     # Status output
