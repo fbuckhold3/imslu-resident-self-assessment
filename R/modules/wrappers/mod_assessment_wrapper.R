@@ -132,8 +132,8 @@ mod_assessment_wrapper_ui <- function(id) {
       }
     "))
   )
-
-}
+  )  # Close tagList
+}    # Close function
 
  
 
