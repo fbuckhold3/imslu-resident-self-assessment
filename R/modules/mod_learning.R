@@ -48,7 +48,35 @@ mod_learning_ui <- function(id) {
         uiOutput(ns("step3_visualization"))
       )
     ),
-    
+
+    # Board Preparation Section
+    div(
+      class = "card mb-4",
+      div(
+        class = "card-header",
+        h4("Board Preparation Progress")
+      ),
+      div(
+        class = "card-body",
+        div(
+          class = "mb-3",
+          tags$label(
+            class = "form-label",
+            tags$strong("How is your progress with reviewing your MKSAP coming along?"),
+            br(),
+            "Given your In-Training results and your MKSAP prep, what concerns do you have in board preparation? Do you feel it is going well? Not well? What is your plan going forward?"
+          ),
+          textAreaInput(
+            ns("board_discussion"),
+            label = NULL,
+            placeholder = "Describe your board preparation progress, concerns, and plans...",
+            rows = 5,
+            width = "100%"
+          )
+        )
+      )
+    ),
+
     # Previous Period Review
     div(
       class = "card mb-4",
@@ -235,6 +263,11 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         # Load learning other
         if (!is.na(current_data$s_e_learn_oth[1]) && current_data$s_e_learn_oth[1] != "") {
           updateTextInput(session, "learn_other", value = current_data$s_e_learn_oth[1])
+        }
+
+        # Load board discussion
+        if (!is.na(current_data$s_e_board_discu[1]) && current_data$s_e_board_discu[1] != "") {
+          updateTextAreaInput(session, "board_discussion", value = current_data$s_e_board_discu[1])
         }
       }
     })
@@ -550,17 +583,22 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
       if (!is.null(input$learning_styles)) {
         learn_choices_str <- dictionary$select_choices_or_calculations[dictionary$field_name == "s_e_learn_style"][1]
         learn_choices <- parse_choices_safe(learn_choices_str)
-        
+
         for (val in learn_choices$value) {
           field_name <- paste0("s_e_learn_style___", val)
           submit_data[[field_name]] <- if (val %in% input$learning_styles) "1" else "0"
         }
-        
+
         if ("12" %in% input$learning_styles && !is.null(input$learn_other) && input$learn_other != "") {
           submit_data$s_e_learn_oth <- input$learn_other
         }
       }
-      
+
+      # Add board discussion
+      if (!is.null(input$board_discussion) && input$board_discussion != "") {
+        submit_data$s_e_board_discu <- input$board_discussion
+      }
+
       # Submit to REDCap using REDCapR
       result <- tryCatch({
         result_obj <- REDCapR::redcap_write_oneshot(
