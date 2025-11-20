@@ -381,7 +381,9 @@ output$previous_career_display <- renderUI({
         s_e_track = input$track,
         s_e_track_type = if (input$track == "1" && !is.null(input$track_type)) {
           paste(input$track_type, collapse = ",")
-        } else ""
+        } else "",
+        s_e_period = as.character(period()),
+        s_e_date = format(Sys.Date(), "%Y-%m-%d")
       )
       
       # Submit to REDCap
