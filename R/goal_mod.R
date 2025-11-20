@@ -908,17 +908,6 @@ observe({
       current_period <- period_name()
       period_num <- extract_period_number(current_period)
 
-      # Calculate PGY year from period
-      year_resident <- if (period_num %in% c(1, 2, 7)) {
-        1  # Intern
-      } else if (period_num %in% c(3, 4)) {
-        2  # PGY2
-      } else if (period_num %in% c(5, 6)) {
-        3  # PGY3
-      } else {
-        1  # Default
-      }
-
       # Get previous goals data
       prev <- previous_goals()
 
@@ -931,7 +920,7 @@ observe({
         redcap_repeat_instrument = "ilp",
         redcap_repeat_instance = period_num,
         ilp_date = format(Sys.Date(), "%Y-%m-%d"),
-        year_resident = as.character(year_resident),
+        year_resident = as.character(period_num),  # Period number (1-7)
         stringsAsFactors = FALSE
       )
 
