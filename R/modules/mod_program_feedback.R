@@ -23,9 +23,6 @@ mod_program_feedback_ui <- function(id) {
         p(strong("While any feedback is helpful, specific scenarios and suggestions for improvement are more helpful."))
       ),
 
-      # Display previous period feedback
-      uiOutput(ns("previous_feedback_display")),
-      
       # Question 1: Plus
       div(
         class = "question-group",
@@ -111,17 +108,6 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       save_in_progress = FALSE,
       last_save_time = NULL
     )
-
-    # Display previous period feedback
-    output$previous_feedback_display <- renderUI({
-      req(rdm_data(), period, record_id())
-
-      gmed::display_program_feedback(
-        rdm_data = rdm_data(),
-        record_id = record_id(),
-        current_period = if (is.reactive(period)) period() else period
-      )
-    })
 
     # Period number to name mapping
     period_num_to_name <- c(
@@ -260,22 +246,23 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
       }
 
       message("Final period_number: ", period_number)
-      
-      # Prepare field data
-      feedback_data <- list(
+
+      # Get period name for s_e_period field
+      period_name <- period_num_to_name[as.character(period_number)]
+
+      # Prepare submission dataframe
+      submit_data <- data.frame(
+        record_id = record_id(),
+        redcap_repeat_instrument = "s_eval",
+        redcap_repeat_instance = period_number,
         s_e_prog_plus = input$s_e_prog_plus %||% "",
         s_e_prog_delta = input$s_e_prog_delta %||% "",
         s_e_progconf = input$s_e_progconf %||% "",
         s_e_progfeed = input$s_e_progfeed %||% "",
-        s_e_period = as.character(period_number),
-        s_e_date = format(Sys.Date(), "%Y-%m-%d")
+        s_e_period = period_name,
+        s_e_date = format(Sys.Date(), "%Y-%m-%d"),
+        stringsAsFactors = FALSE
       )
-
-      # Add feedback fields
-      submit_data$s_e_prog_plus <- input$s_e_prog_plus %||% ""
-      submit_data$s_e_prog_delta <- input$s_e_prog_delta %||% ""
-      submit_data$s_e_progconf <- input$s_e_progconf %||% ""
-      submit_data$s_e_progfeed <- input$s_e_progfeed %||% ""
 
       message("Feedback data:")
       message("  s_e_prog_plus: ", nchar(submit_data$s_e_prog_plus), " chars")
