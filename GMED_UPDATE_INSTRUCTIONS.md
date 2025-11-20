@@ -1,169 +1,121 @@
-# Instructions to Update gmed Package
+# How to Fix Career Planning Display Issue
 
-## What Was Fixed
+## Problem
 
-The `display_career_planning()` function in the gmed package had three critical issues that prevented it from working:
+The previous career planning and track data wasn't displaying because the app was using an outdated version of the `gmed` package.
 
-### 1. Wrong case for repeat instrument filter
-- **Before**: `redcap_repeat_instrument == "S Eval"`
-- **After**: `redcap_repeat_instrument == "s_eval"`
-- **Line**: 162, 220
+## Solution
 
-### 2. Wrong field name for period filtering
-- **Before**: `s_e_period == previous_period_code`
-- **After**: `redcap_repeat_instance == previous_period_num`
-- **Lines**: 163, 221
-- **Why**: REDCap uses `redcap_repeat_instance` to track which instance of a repeating form, not a custom `s_e_period` field
+**Good news:** The `gmed` package on GitHub already has the correct implementations!
 
-### 3. Inflexible data structure handling
-- **Before**: Only accepted flat data frame
-- **After**: Handles both `rdm_data` directly OR `rdm_data$all_forms$s_eval`
-- **Lines**: 9-13
-- **Why**: Different apps may structure the data differently
+The functions `display_career_planning()` and `display_wellness()` are already fixed in the repository at:
+https://github.com/fbuckhold3/gmed
 
-### 4. Improved period type handling
-- **Added**: Robust handling of numeric, list (with `period_number`), and character period types
-- **Lines**: 142-159
-- **Why**: Different functions return period in different formats
+They correctly use:
+- Lowercase `"s_eval"` for repeat instrument filtering
+- `redcap_repeat_instance` for period-based filtering
+- Proper data structure handling for `rdm_data$all_forms$s_eval`
 
-## Files to Update in gmed Repository
+## Quick Fix: Install Latest gmed from GitHub
 
-The function is typically located at:
-```
-gmed/R/display_career_planning.R
-```
+### Option 1: Run the Installation Script
 
-Or it might be in:
-```
-gmed/R/rdm_display_functions.R
-```
-
-Or check:
-```
-gmed/R/utils_rdm.R
-```
-
-## Step-by-Step Instructions
-
-### 1. Clone/Navigate to gmed Repository
-
-```bash
-# If you haven't cloned it yet:
-cd /home/user
-git clone [YOUR_GMED_REPO_URL] gmed
-
-# Or if you already have it:
-cd /home/user/gmed
-```
-
-### 2. Create a New Branch
-
-```bash
-git checkout -b fix/display-career-planning
-```
-
-### 3. Find the Function File
-
-```bash
-# Search for the function
-grep -r "display_career_planning" R/
-```
-
-### 4. Replace the Function
-
-Open the file containing `display_career_planning()` and replace the entire function with the code from:
-```
-/home/user/display_career_planning_FIXED.R
-```
-
-Key changes to make:
-- Line ~142: Change `"S Eval"` to `"s_eval"`
-- Line ~143: Change `s_e_period == display_period` to `redcap_repeat_instance == display_period`
-- Line ~220: Change `"S Eval"` to `"s_eval"`
-- Line ~221: Change `s_e_period == previous_period_code` to `redcap_repeat_instance == previous_period_num`
-- Lines ~9-13: Add data structure handling
-- Lines ~142-159: Update period type conversion
-
-### 5. Update Documentation (if needed)
-
-Check the function's roxygen documentation at the top and ensure it mentions:
+From R or RStudio:
 ```r
-#' @param rdm_data Data frame containing REDCap data OR data structure with $all_forms$s_eval
-#' @param current_period Current period number (1-7) or list with period_number
+source("install_gmed_from_github.R")
 ```
 
-### 6. Test the Changes
-
-```R
-# In R console
-devtools::load_all()
-devtools::test()  # If you have tests
-devtools::check()  # Check package integrity
-```
-
-### 7. Commit and Push
-
+Or from command line:
 ```bash
-git add R/display_career_planning.R  # Or whatever file you updated
-git commit -m "Fix display_career_planning to use correct REDCap field names
-
-- Change repeat instrument filter from 'S Eval' to 's_eval' (lowercase)
-- Use redcap_repeat_instance instead of non-existent s_e_period field
-- Add flexible data structure handling for rdm_data formats
-- Improve period type conversion (numeric, list, character)
-- Resolves data loading issues in imslu-resident-self-assessment app"
-
-git push -u origin fix/display-career-planning
+Rscript install_gmed_from_github.R
 ```
 
-### 8. Create Pull Request
+### Option 2: Manual Installation
 
-1. Go to your gmed repository on GitHub
-2. Click "Compare & pull request" for your new branch
-3. Title: `Fix display_career_planning REDCap field name issues`
-4. Description:
-   ```
-   ## Problem
-   The `display_career_planning()` function was using incorrect REDCap field names:
-   - Wrong case: "S Eval" instead of "s_eval"
-   - Wrong field: `s_e_period` instead of `redcap_repeat_instance`
+In R or RStudio:
+```r
+# Install devtools if needed
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
 
-   This caused the function to return no data when called from apps.
-
-   ## Solution
-   - Fixed repeat instrument filter to lowercase "s_eval"
-   - Changed period filtering to use `redcap_repeat_instance`
-   - Added flexible data structure handling
-   - Improved period type conversion
-
-   ## Testing
-   Tested in imslu-resident-self-assessment app with:
-   - Record ID: 94
-   - Period 5 (Mid PGY3)
-   - Successfully displays period 4 career planning data
-   ```
-
-5. Assign reviewers and submit
-
-### 9. After Merge: Update Your App
-
-Once the PR is merged to gmed main branch:
-
-```bash
-# In your imslu-resident-self-assessment repo
-cd /home/user/imslu-resident-self-assessment
-
-# Update gmed package
-R -e "devtools::install_github('YOUR_ORG/gmed')"
-
-# Or if using renv:
-renv::install("YOUR_ORG/gmed")
+# Install latest gmed from GitHub
+devtools::install_github("fbuckhold3/gmed", force = TRUE, upgrade = "never")
 ```
 
-Then you can switch back from the inline implementation to using the gmed function:
+### After Installation
+
+1. Restart R session / Shiny app
+2. The career planning display should now work correctly
+3. Previous period's data will show with:
+   - Career paths
+   - Fellowship interests
+   - Program tracks
+   - Discussion topics
+
+## What Was Already Fixed in gmed
+
+The gmed repository already contains the correct implementation in `R/display_career_planning.R`:
+
+### Key Fixes (Already in GitHub Version)
+
+**1. Correct Case for Repeat Instrument** (Lines 105, 352)
+```r
+redcap_repeat_instrument == "s_eval"  # lowercase, not "S Eval"
+```
+
+**2. Correct Field for Period Filtering** (Lines 106, 353)
+```r
+redcap_repeat_instance == prev_period  # not s_e_period
+```
+
+**3. Flexible Data Structure Handling** (Lines 19-23, 323-327)
+```r
+# Handles both rdm_data$all_forms$s_eval AND flat rdm_data
+if (!is.null(rdm_data$all_forms) && !is.null(rdm_data$all_forms$s_eval)) {
+  s_eval_data <- rdm_data$all_forms$s_eval
+} else {
+  s_eval_data <- rdm_data
+}
+```
+
+**4. Robust Period Type Handling** (Lines 83-95, 330-342)
+```r
+# Handles numeric, list (with period_number), and character period types
+current_period_num <- if (is.numeric(current_period)) {
+  current_period
+} else if (is.list(current_period) && "period_number" %in% names(current_period)) {
+  current_period$period_number
+} else if (is.character(current_period)) {
+  period_map <- c(
+    "Entering Residency" = 7, "Mid Intern" = 1, "End Intern" = 2,
+    "Mid PGY2" = 3, "End PGY2" = 4, "Mid PGY3" = 5, "Graduating" = 6
+  )
+  period_map[current_period]
+} else {
+  as.numeric(current_period)
+}
+```
+
+## Verification
+
+After installing the updated gmed package, verify the functions are working:
 
 ```r
-# In mod_career_planning_wrapper.R, line ~187
+# Load the package
+library(gmed)
+
+# Check function exists
+exists("display_career_planning", where = asNamespace("gmed"))
+exists("display_wellness", where = asNamespace("gmed"))
+
+# Verify package version
+packageVersion("gmed")
+```
+
+The app wrapper in `R/modules/wrappers/mod_career_planning_wrapper.R` already correctly calls these functions:
+
+```r
 output$previous_career_display <- renderUI({
   req(rdm_data(), period(), record_id())
 
@@ -176,69 +128,108 @@ output$previous_career_display <- renderUI({
 })
 ```
 
-## Quick Reference: What to Search/Replace
+## Troubleshooting
 
-If you want to do a quick find/replace approach:
+### Issue: Still not displaying after update
 
-**Find**:
+**Check 1: Verify gmed version and source**
 ```r
-redcap_repeat_instrument == "S Eval"
-```
-**Replace with**:
-```r
-redcap_repeat_instrument == "s_eval"
-```
+packageVersion("gmed")
 
-**Find**:
-```r
-s_e_period == display_period
-```
-**Replace with**:
-```r
-redcap_repeat_instance == display_period
+# Check where package is installed from
+packageDescription("gmed")$GithubRepo
+packageDescription("gmed")$GithubUsername
 ```
 
-**Find**:
+**Check 2: Force reinstall from GitHub**
 ```r
-s_e_period == previous_period_code
-```
-**Replace with**:
-```r
-redcap_repeat_instance == previous_period_num
+remove.packages("gmed")
+devtools::install_github("fbuckhold3/gmed", force = TRUE)
 ```
 
-**And add at the beginning** (after line 8):
+**Check 3: Restart R session completely**
+- Close and reopen R/RStudio
+- Reload all packages
+- Restart the Shiny app
+
+**Check 4: Verify data structure**
 ```r
-  # Handle different data structure formats
-  if (!is.null(rdm_data$all_forms) && !is.null(rdm_data$all_forms$s_eval)) {
-    s_eval_data <- rdm_data$all_forms$s_eval
-  } else {
-    s_eval_data <- rdm_data
+# In your app, add debugging:
+observe({
+  req(rdm_data())
+  message("Data structure: ", paste(names(rdm_data()), collapse = ", "))
+
+  if (!is.null(rdm_data()$all_forms)) {
+    message("all_forms available: ", paste(names(rdm_data()$all_forms), collapse = ", "))
+
+    if ("s_eval" %in% names(rdm_data()$all_forms)) {
+      message("s_eval rows: ", nrow(rdm_data()$all_forms$s_eval))
+    }
   }
-
-  # Filter to this record
-  record_data <- s_eval_data %>%
-    dplyr::filter(record_id == !!record_id)
+})
 ```
 
-**And replace the period conversion section** (around line 135-145) with:
+**Check 5: Verify REDCap data has previous period**
 ```r
-  # Convert period to number - handle all types
-  current_period_num <- if (is.numeric(current_period)) {
-    current_period
-  } else if (is.list(current_period) && "period_number" %in% names(current_period)) {
-    current_period$period_number
-  } else if (is.character(current_period)) {
-    period_map <- c(
-      "Entering Residency" = 7, "Mid Intern" = 1, "End Intern" = 2,
-      "Mid PGY2" = 3, "End PGY2" = 4, "Mid PGY3" = 5, "Graduating" = 6
+# Make sure there IS data from previous period
+observe({
+  req(rdm_data(), record_id(), period())
+
+  prev_period <- period() - 1
+
+  prev_data <- rdm_data()$all_forms$s_eval %>%
+    dplyr::filter(
+      record_id == !!record_id(),
+      redcap_repeat_instrument == "s_eval",
+      redcap_repeat_instance == prev_period
     )
-    period_map[current_period]
-  } else {
-    as.numeric(current_period)
-  }
+
+  message("Previous period (", prev_period, ") has ", nrow(prev_data), " rows")
+})
+```
+
+### Issue: Function not found error
+
+This means gmed isn't properly installed. Try:
+```r
+# Completely remove and reinstall
+remove.packages("gmed")
+.rs.restartR()  # If in RStudio
+
+devtools::install_github("fbuckhold3/gmed")
+library(gmed)
+```
+
+### Issue: Old version still loading
+
+R may be caching the old package:
+```r
+# Clear package cache
+detach("package:gmed", unload = TRUE)
+remove.packages("gmed")
+
+# Clear R environment
+rm(list = ls())
+
+# Reinstall
+devtools::install_github("fbuckhold3/gmed", force = TRUE)
+
+# Restart R session
+.rs.restartR()  # RStudio only
+# Or close and reopen R
 ```
 
 ## Summary
 
-The fixed function is in `/home/user/display_career_planning_FIXED.R`. Use it to replace the function in your gmed package, following the steps above. The key fixes ensure the function uses the correct REDCap field names (`s_eval` and `redcap_repeat_instance`) instead of the incorrect ones (`S Eval` and `s_e_period`).
+**The fix is simple:** Install the latest gmed from GitHub.
+
+The GitHub repository at `https://github.com/fbuckhold3/gmed` already contains all the necessary fixes in `R/display_career_planning.R`.
+
+No code changes are needed in the `imslu-resident-self-assessment` app - the wrapper module correctly calls `gmed::display_career_planning()` and `gmed::display_wellness()`.
+
+Just run:
+```r
+devtools::install_github("fbuckhold3/gmed", force = TRUE)
+```
+
+Then restart your R session and Shiny app.
