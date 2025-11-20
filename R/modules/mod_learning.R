@@ -183,7 +183,62 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         data_dict
       }
     })
-    
+
+    # Load existing data when resident/period changes
+    observe({
+      req(s_eval_data(), period_info(), dict())
+
+      s_eval <- s_eval_data()
+      current_period <- period_info()
+
+      # Get current period data
+      current_data <- s_eval %>%
+        dplyr::filter(redcap_repeat_instrument == "s_eval",
+                     redcap_repeat_instance == current_period)
+
+      if (nrow(current_data) > 0) {
+        # Load topic selections
+        topic_fields <- grep("^s_e_topic_sel___", names(current_data), value = TRUE)
+        if (length(topic_fields) > 0) {
+          selected_topics <- character()
+          for (field in topic_fields) {
+            if (!is.na(current_data[[field]][1]) && current_data[[field]][1] == "1") {
+              code <- sub("s_e_topic_sel___", "", field)
+              selected_topics <- c(selected_topics, code)
+            }
+          }
+          if (length(selected_topics) > 0) {
+            updateCheckboxGroupInput(session, "topics", selected = selected_topics)
+          }
+        }
+
+        # Load topic other
+        if (!is.na(current_data$s_e_topic_oth[1]) && current_data$s_e_topic_oth[1] != "") {
+          updateTextInput(session, "topic_other", value = current_data$s_e_topic_oth[1])
+        }
+
+        # Load learning style selections
+        learn_fields <- grep("^s_e_learn_style___", names(current_data), value = TRUE)
+        if (length(learn_fields) > 0) {
+          selected_learns <- character()
+          for (field in learn_fields) {
+            if (!is.na(current_data[[field]][1]) && current_data[[field]][1] == "1") {
+              code <- sub("s_e_learn_style___", "", field)
+              selected_learns <- c(selected_learns, code)
+            }
+          }
+          if (length(selected_learns) > 0) {
+            updateCheckboxGroupInput(session, "learning_styles", selected = selected_learns)
+          }
+        }
+
+        # Load learning other
+        if (!is.na(current_data$s_e_learn_oth[1]) && current_data$s_e_learn_oth[1] != "") {
+          updateTextInput(session, "learn_other", value = current_data$s_e_learn_oth[1])
+        }
+      }
+    })
+
     # ITE Scores Visualization
     output$ite_visualization <- renderUI({
       data <- test_data()

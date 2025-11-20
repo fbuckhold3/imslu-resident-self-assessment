@@ -309,7 +309,117 @@ ui <- page_navbar(
             )
           ),
           checkboxInput("show_period_debug", "Show Period Debug Info", value = TRUE),
-          
+
+          # Two-column layout: Resident info + Checklist
+          div(
+            class = "row g-4 mb-4",
+
+            # Left column: Resident info cards (existing)
+            div(
+              class = "col-lg-6",
+              h4(class = "mb-3", icon("user-circle"), " Your Information"),
+
+              # Training info card (compact)
+              div(
+                class = "card mb-3 border-primary",
+                div(
+                  class = "card-header bg-primary text-white",
+                  h6(class = "mb-0", icon("graduation-cap"), " Training")
+                ),
+                div(
+                  class = "card-body py-2",
+                  div(class = "row",
+                    div(class = "col-6 mb-2",
+                      tags$small(class = "text-muted", "Level:"), br(),
+                      tags$span(class = "badge bg-info",
+                               textOutput("resident_level_display_intro_compact", inline = TRUE))
+                    ),
+                    div(class = "col-6 mb-2",
+                      tags$small(class = "text-muted", "Type:"), br(),
+                      tags$span(class = "badge bg-secondary",
+                               textOutput("resident_track_display_intro_compact", inline = TRUE))
+                    ),
+                    div(class = "col-6",
+                      tags$small(class = "text-muted", "Graduation:"), br(),
+                      tags$small(textOutput("resident_grad_year_display_intro_compact", inline = TRUE))
+                    ),
+                    div(class = "col-6",
+                      tags$small(class = "text-muted", "Academic Year:"), br(),
+                      tags$small(textOutput("resident_academic_year_display_intro_compact", inline = TRUE))
+                    )
+                  )
+                )
+              ),
+
+              # Period info card (compact)
+              div(
+                class = "card mb-3 border-success",
+                div(
+                  class = "card-header bg-success text-white",
+                  h6(class = "mb-0", icon("calendar-check"), " Current Period")
+                ),
+                div(
+                  class = "card-body",
+                  div(class = "text-center",
+                    tags$span(class = "badge bg-success fs-5",
+                             textOutput("resident_period_display_intro_compact", inline = TRUE))
+                  ),
+                  p(class = "text-muted small mb-0 mt-2 text-center",
+                    "This assessment covers your current training period."
+                  )
+                )
+              ),
+
+              # Coach info card (compact)
+              div(
+                class = "card border-info",
+                div(
+                  class = "card-header bg-info text-white",
+                  h6(class = "mb-0", icon("user-friends"), " Your Coach")
+                ),
+                div(
+                  class = "card-body py-2",
+                  div(class = "mb-2",
+                    tags$small(class = "text-muted", "Name:"), br(),
+                    textOutput("resident_coach_display_intro_compact", inline = TRUE)
+                  ),
+                  div(class = "mb-0",
+                    tags$small(class = "text-muted", "Contact:"), br(),
+                    uiOutput("resident_coach_email_display_intro_compact")
+                  )
+                )
+              )
+            ),
+
+            # Right column: Completion checklist
+            div(
+              class = "col-lg-6",
+              div(
+                class = "card h-100",
+                div(
+                  class = "card-header bg-light",
+                  h4(class = "mb-0", icon("clipboard-check"), " Self-Assessment Progress")
+                ),
+                div(
+                  class = "card-body",
+                  div(
+                    class = "alert alert-info mb-3",
+                    icon("info-circle", class = "me-2"),
+                    tags$strong("How to use this checklist:"),
+                    tags$ul(
+                      class = "mb-0 mt-2",
+                      tags$li(tags$strong(icon("star", class = "text-warning"), " Required"), " - Must be completed before final submission"),
+                      tags$li(icon("check-circle", class = "text-success"), " Complete - You've already submitted data"),
+                      tags$li(icon("circle", class = "text-danger"), " Incomplete - Required but not yet completed"),
+                      tags$li(icon("circle", class = "text-muted"), " Optional - Not required but available")
+                    )
+                  ),
+                  mod_completion_checklist_ui("intro_checklist", show_details = TRUE)
+                )
+              )
+            )
+          ),
+
           # Navigation
           div(
             class = "d-flex justify-content-end mt-4",
@@ -355,28 +465,58 @@ nav_panel(
     div(
       class = "container py-5",
       div(
-        class = "row justify-content-center",
+        class = "row",
         div(
-          class = "col-md-8 text-center",
+          class = "col-lg-10 offset-lg-1",
+
+          # Success message
           div(
-            class = "card shadow-lg",
+            class = "card shadow-lg mb-4",
             div(
-              class = "card-body p-5",
+              class = "card-body p-5 text-center",
               icon("check-circle", class = "fa-4x text-success mb-4"),
-              h2("Self-Assessment Complete!"),  # CHANGED
-p(class = "lead", "Thank you for completing your self-assessment."),
+              h2("Self-Assessment Complete!"),
+              p(class = "lead", "Thank you for completing your self-assessment."),
               hr(),
               p("Your responses have been saved to REDCap."),
-              p("You can close this window or return to the beginning."),
-              div(
-                class = "mt-4",
-                actionButton(
-                  "return_to_start",
-                  "Return to Start",
-                  class = "btn-primary btn-lg",
-                  icon = icon("home")
-                )
-              )
+              p("Review your submitted data below.")
+            )
+          ),
+
+          # Completion checklist
+          div(
+            class = "card mb-4",
+            div(
+              class = "card-header bg-success text-white",
+              h4(class = "mb-0", icon("clipboard-check"), " Completion Status")
+            ),
+            div(
+              class = "card-body",
+              mod_completion_checklist_ui("completion_checklist", show_details = TRUE)
+            )
+          ),
+
+          # ILP Summary
+          div(
+            class = "card mb-4",
+            div(
+              class = "card-header bg-primary text-white",
+              h4(class = "mb-0", icon("file-medical-alt"), " Your Individualized Learning Plan (ILP)")
+            ),
+            div(
+              class = "card-body",
+              mod_ilp_summary_ui("ilp_summary")
+            )
+          ),
+
+          # Navigation
+          div(
+            class = "mt-4 text-center",
+            actionButton(
+              "return_to_start",
+              "Return to Introduction",
+              class = "btn-primary btn-lg",
+              icon = icon("home")
             )
           )
         )
