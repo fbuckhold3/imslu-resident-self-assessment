@@ -10,37 +10,45 @@ mod_career_planning_wrapper_ui <- function(id) {
     # WELLNESS SECTION
     h3("Wellness Check-In"),
     hr(),
-    
-    # Display previous wellness comment
-    uiOutput(ns("previous_wellness_display")),
-    
-    # Current wellness entry
-    h4("Current Wellness"),
-    p("How are you doing from a wellness standpoint? Are there issues we can help with, or should be aware of to support you?"),
-    textAreaInput(
-      ns("wellness"),
-      label = NULL,
-      rows = 4,
-      placeholder = "Enter your wellness reflection..."
+
+    # Current wellness entry in styled card
+    div(
+      class = "card mb-3",
+      style = "background-color: #f3e5f5; border-color: #ce93d8;",
+      div(
+        class = "card-body",
+        h5(class = "card-title", style = "color: #6a1b9a;", "Current Wellness"),
+        p("How are you doing from a wellness standpoint? Are there issues we can help with, or should be aware of to support you?"),
+        textAreaInput(
+          ns("wellness"),
+          label = NULL,
+          rows = 4,
+          placeholder = "Enter your wellness reflection...",
+          width = "100%"
+        )
+      )
     ),
-    
+
+    # Display previous wellness comment below
+    uiOutput(ns("previous_wellness_display")),
+
     br(),
     hr(),
-    
+
     # CAREER PLANNING SECTION
     h3("Career Planning"),
     hr(),
-    
+
     # Display previous career planning
     uiOutput(ns("previous_career_display")),
-    
+
     # Current career planning entry
     h4("Update Career Planning"),
-    p("Enter your current career planning thoughts and goals."),
+    p("Select your current career interests and goals."),
     uiOutput(ns("career_form")),
-    
+
     br(),
-    
+
     actionButton(
       ns("submit"),
       "Submit Wellness and Career Planning",
@@ -165,34 +173,256 @@ output$previous_wellness_display <- renderUI({
       )
 
     if (nrow(prev_data) == 0 || is.na(prev_data$s_e_well[1]) || prev_data$s_e_well[1] == "") {
-      return(div(class = "alert alert-info", "No previous wellness comments."))
+      return(NULL)  # Don't show anything if no previous data
     }
 
     return(
       div(
-        class = "card mb-3 bg-light",
+        class = "card mb-3",
+        style = "background-color: #f5f5f5; border-left: 4px solid #9575cd;",
         div(
           class = "card-body",
-          h5(class = "card-title", "Previous Wellness Comments (Period ", prev_period, ")"),
-          p(class = "card-text", prev_data$s_e_well[1])
+          h6(class = "card-subtitle mb-2 text-muted",
+             icon("history"), " Previous Wellness (Period ", prev_period, ")"),
+          p(class = "card-text", style = "font-style: italic;", prev_data$s_e_well[1])
         )
       )
     )
   }
 
-  return(div(class = "alert alert-info", "No previous wellness comments."))
+  return(NULL)
 })
 
 # Display previous career planning
 output$previous_career_display <- renderUI({
   req(rdm_data(), period(), record_id())
-  
-  gmed::display_career_planning(
-    rdm_data = rdm_data(),
-    record_id = record_id(),
-    current_period = period(),
-    data_dict = data_dict
-  )
+
+  # Convert period to number - handle all types
+  current_period_num <- if (is.numeric(period())) {
+    period()
+  } else if (is.list(period()) && "period_number" %in% names(period())) {
+    period()$period_number
+  } else if (is.character(period())) {
+    period_map <- c(
+      "Entering Residency" = 7, "Mid Intern" = 1, "End Intern" = 2,
+      "Mid PGY2" = 3, "End PGY2" = 4, "Mid PGY3" = 5, "Graduating" = 6
+    )
+    period_map[period()]
+  } else {
+    as.numeric(period())
+  }
+
+  # Get previous period data
+  prev_period <- current_period_num - 1
+  if (prev_period < 1) return(NULL)
+
+  # Access s_eval form data correctly
+  if (!is.null(rdm_data()$all_forms) && !is.null(rdm_data()$all_forms$s_eval)) {
+    prev_data <- rdm_data()$all_forms$s_eval %>%
+      dplyr::filter(
+        record_id == !!record_id(),
+        redcap_repeat_instrument == "s_eval",
+        redcap_repeat_instance == prev_period
+      )
+
+    if (nrow(prev_data) == 0) {
+      return(NULL)  # Don't show anything if no previous data
+    }
+
+    # Decode career path checkboxes
+    career_cols <- grep("^s_e_career_path___", names(prev_data), value = TRUE)
+    career_selected <- character()
+    if (length(career_cols) > 0) {
+      career_field <- get_field_info("s_e_career_path")
+      career_choices_map <- parse_choices(get_choices_string(career_field))
+
+      for (col in career_cols) {
+        if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
+          code <- sub("s_e_career_path___", "", col)
+          # Find label for this code
+          label <- names(career_choices_map)[career_choices_map == code]
+          if (length(label) > 0) {
+            career_selected <- c(career_selected, label)
+          }
+        }
+      }
+    }
+
+    # Decode fellowship checkboxes
+    fellow_cols <- grep("^s_e_fellow___", names(prev_data), value = TRUE)
+    fellow_selected <- character()
+    if (length(fellow_cols) > 0) {
+      fellow_field <- get_field_info("s_e_fellow")
+      fellow_choices_map <- parse_choices(get_choices_string(fellow_field))
+
+      for (col in fellow_cols) {
+        if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
+          code <- sub("s_e_fellow___", "", col)
+          label <- names(fellow_choices_map)[fellow_choices_map == code]
+          if (length(label) > 0) {
+            fellow_selected <- c(fellow_selected, label)
+          }
+        }
+      }
+    }
+
+    # Decode track type checkboxes
+    track_cols <- grep("^s_e_track_type___", names(prev_data), value = TRUE)
+    track_selected <- character()
+    if (length(track_cols) > 0) {
+      track_field <- get_field_info("s_e_track_type")
+      track_choices_map <- parse_choices(get_choices_string(track_field))
+
+      for (col in track_cols) {
+        if (!is.na(prev_data[[col]][1]) && prev_data[[col]][1] == "1") {
+          code <- sub("s_e_track_type___", "", col)
+          label <- names(track_choices_map)[track_choices_map == code]
+          if (length(label) > 0) {
+            track_selected <- c(track_selected, label)
+          }
+        }
+      }
+    }
+
+    # Build visual display with badges
+    content_parts <- list()
+
+    # Career Paths Section
+    if (length(career_selected) > 0) {
+      career_badges <- lapply(career_selected, function(path) {
+        span(
+          class = "badge badge-primary mr-1 mb-1",
+          style = "font-size: 0.9em; padding: 0.4em 0.8em;",
+          path
+        )
+      })
+
+      content_parts <- c(content_parts, list(
+        div(
+          class = "mb-3",
+          div(
+            style = "display: flex; align-items: center; margin-bottom: 0.5rem;",
+            icon("briefcase", class = "mr-2", style = "color: #1976d2;"),
+            strong("Career Paths")
+          ),
+          div(
+            style = "margin-left: 1.5rem;",
+            career_badges
+          ),
+          if (!is.na(prev_data$s_e_career_oth[1]) && prev_data$s_e_career_oth[1] != "") {
+            div(
+              class = "text-muted mt-1",
+              style = "margin-left: 1.5rem; font-size: 0.9em;",
+              em("Other: ", prev_data$s_e_career_oth[1])
+            )
+          }
+        )
+      ))
+    }
+
+    # Fellowship Interests Section
+    if (length(fellow_selected) > 0) {
+      fellow_badges <- lapply(fellow_selected, function(fellow) {
+        span(
+          class = "badge badge-success mr-1 mb-1",
+          style = "font-size: 0.9em; padding: 0.4em 0.8em;",
+          fellow
+        )
+      })
+
+      content_parts <- c(content_parts, list(
+        div(
+          class = "mb-3",
+          div(
+            style = "display: flex; align-items: center; margin-bottom: 0.5rem;",
+            icon("graduation-cap", class = "mr-2", style = "color: #388e3c;"),
+            strong("Fellowship Interests")
+          ),
+          div(
+            style = "margin-left: 1.5rem;",
+            fellow_badges
+          ),
+          if (!is.na(prev_data$s_e_fellow_oth[1]) && prev_data$s_e_fellow_oth[1] != "") {
+            div(
+              class = "text-muted mt-1",
+              style = "margin-left: 1.5rem; font-size: 0.9em;",
+              em("Other: ", prev_data$s_e_fellow_oth[1])
+            )
+          }
+        )
+      ))
+    }
+
+    # Track Information Section
+    if (!is.na(prev_data$s_e_track[1])) {
+      if (prev_data$s_e_track[1] == "1" && length(track_selected) > 0) {
+        track_badges <- lapply(track_selected, function(track) {
+          span(
+            class = "badge badge-info mr-1 mb-1",
+            style = "font-size: 0.9em; padding: 0.4em 0.8em;",
+            track
+          )
+        })
+
+        content_parts <- c(content_parts, list(
+          div(
+            class = "mb-2",
+            div(
+              style = "display: flex; align-items: center; margin-bottom: 0.5rem;",
+              icon("road", class = "mr-2", style = "color: #0288d1;"),
+              strong("Program Tracks")
+            ),
+            div(
+              style = "margin-left: 1.5rem;",
+              track_badges
+            )
+          )
+        ))
+      }
+    }
+
+    # Discussion Topics Section
+    if (!is.na(prev_data$s_e_discussion[1]) && prev_data$s_e_discussion[1] != "") {
+      content_parts <- c(content_parts, list(
+        div(
+          class = "mb-2",
+          div(
+            style = "display: flex; align-items: center; margin-bottom: 0.5rem;",
+            icon("comments", class = "mr-2", style = "color: #7b1fa2;"),
+            strong("Discussion Topics with Mentor")
+          ),
+          div(
+            class = "text-muted",
+            style = "margin-left: 1.5rem; font-size: 0.95em; font-style: italic;",
+            prev_data$s_e_discussion[1]
+          )
+        )
+      ))
+    }
+
+    if (length(content_parts) == 0) {
+      return(NULL)  # Don't show anything if no data
+    }
+
+    return(
+      div(
+        class = "card mb-3",
+        style = "background-color: #fafafa; border-left: 4px solid #1976d2;",
+        div(
+          class = "card-body",
+          h6(
+            class = "card-subtitle mb-3 text-muted",
+            icon("history"),
+            " Career Planning from Period ",
+            prev_period
+          ),
+          content_parts
+        )
+      )
+    )
+  }
+
+  return(NULL)
 })
     
     # Dynamic form rendering
@@ -209,6 +439,7 @@ output$previous_career_display <- renderUI({
       fellow_oth_field <- get_field_info("s_e_fellow_oth")
       track_field <- get_field_info("s_e_track")
       track_type_field <- get_field_info("s_e_track_type")
+      discussion_field <- get_field_info("s_e_discussion")
       
       # Parse choices
       career_choices <- parse_choices(get_choices_string(career_field))
@@ -274,6 +505,16 @@ output$previous_career_display <- renderUI({
             label = get_field_label(track_type_field),
             choices = track_type_choices
           )
+        ),
+
+        br(),
+
+        # Discussion topics
+        textAreaInput(
+          ns("discussion"),
+          label = get_field_label(discussion_field),
+          rows = 3,
+          placeholder = "Topics you'd like to discuss with your mentor..."
         )
       )
     })
@@ -367,6 +608,11 @@ output$previous_career_display <- renderUI({
             if (length(checked_codes) > 0) {
               updateCheckboxGroupInput(session, "track_type", selected = checked_codes)
             }
+          }
+
+          # Discussion topics
+          if (!is.na(current_data$s_e_discussion[1]) && current_data$s_e_discussion[1] != "") {
+            updateTextAreaInput(session, "discussion", value = current_data$s_e_discussion[1])
           }
         }
       }
@@ -462,6 +708,9 @@ output$previous_career_display <- renderUI({
         field_name <- paste0("s_e_track_type___", code)
         submit_data[[field_name]] <- if (code %in% input$track_type) "1" else "0"
       }
+
+      # Discussion topics
+      submit_data$s_e_discussion <- input$discussion %||% ""
 
       message("Submitting to REDCap with ", ncol(submit_data), " fields")
 
