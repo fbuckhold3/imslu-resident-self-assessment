@@ -144,7 +144,7 @@ mod_career_planning_wrapper_server <- function(id, rdm_data, record_id, period, 
 output$previous_wellness_display <- renderUI({
   req(rdm_data(), period(), record_id())
 
-  display_wellness(
+  gmed::display_wellness(
     rdm_data = rdm_data(),
     record_id = record_id(),
     current_period = period()
@@ -155,7 +155,19 @@ output$previous_wellness_display <- renderUI({
 output$previous_career_display <- renderUI({
   req(rdm_data(), period(), record_id())
 
-  display_career_planning(
+  # DEBUG: Print what we're passing to the function
+  message("=== CAREER PLANNING WRAPPER DEBUG ===")
+  message("record_id: ", record_id())
+  message("period type: ", class(period()))
+  if (is.list(period()) && "period_number" %in% names(period())) {
+    message("period_number: ", period()$period_number)
+  } else {
+    message("period value: ", period())
+  }
+  message("data_dict available: ", !is.null(data_dict))
+  message("rdm_data structure: ", paste(names(rdm_data()), collapse = ", "))
+
+  gmed::display_career_planning(
     rdm_data = rdm_data(),
     record_id = record_id(),
     current_period = period(),
