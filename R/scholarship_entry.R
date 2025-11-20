@@ -146,10 +146,10 @@ scholarship_entry_server <- function(id, record_id, redcap_url, redcap_token, da
     # Type selection
     shiny::observeEvent(input$select_type_btn, {
       shiny::req(input$schol_type_select)
-      
+
       type <- input$schol_type_select
       state$schol_type <- type
-      
+
       if (type == "2") {
         state$step <- "type_2"
       } else if (type == "7") {
@@ -161,32 +161,32 @@ scholarship_entry_server <- function(id, record_id, redcap_url, redcap_token, da
       } else if (type == "5") {
         state$step <- "step_3_pub"
       }
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Type 2 - Safety Review submission
     shiny::observeEvent(input$submit_safety, {
       safety_type <- input$safety_type
-      
+
       scholarship_data <- list(
         schol_type = "2",
         schol_ps = if (safety_type == "safety") "1" else NA,
         schol_rca = if (safety_type == "rca") "1" else NA
       )
-      
+
       result <- gmed::submit_scholarship_data(
         redcap_url = redcap_url,
         redcap_token = redcap_token,
         record_id = record_id(),
         scholarship_data = scholarship_data
       )
-      
+
       handle_submission_result(result, "Safety review recorded successfully!", refresh_callback, reset_form, output, session)
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Type 7 - Committee submission
     shiny::observeEvent(input$submit_committee, {
       shiny::req(input$schol_comm, input$schol_comm_type)
-      
+
       scholarship_data <- list(
         schol_type = "7",
         schol_comm = input$schol_comm,
@@ -200,10 +200,10 @@ scholarship_entry_server <- function(id, record_id, redcap_url, redcap_token, da
         record_id = record_id(),
         scholarship_data = scholarship_data
       )
-      
+
       handle_submission_result(result, "Committee membership recorded successfully!", refresh_callback, reset_form, output, session)
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Step 1 - Project details submission
     shiny::observeEvent(input$submit_step_1, {
       
@@ -250,41 +250,41 @@ scholarship_entry_server <- function(id, record_id, redcap_url, redcap_token, da
           shiny::div(class = "alert alert-danger", result$message)
         })
       }
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Step 2 - Presentation submission
     shiny::observeEvent(input$submit_presentation, {
       shiny::req(input$schol_pres_conf, input$schol_pres_type)
-      
+
       pres_data <- list(
         schol_type = "4",
         schol_pres = "1",
         schol_pres_conf = input$schol_pres_conf,
         schol_pres_type = input$schol_pres_type
       )
-      
+
       result <- gmed::submit_scholarship_data(
         redcap_url = redcap_url,
         redcap_token = redcap_token,
         record_id = record_id(),
         scholarship_data = pres_data
       )
-      
+
       if (result$success) {
         if (!is.null(refresh_callback)) refresh_callback()
         output$submit_message <- shiny::renderUI({
           shiny::div(class = "alert alert-success", "Presentation added!")
         })
       }
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Add another presentation
     shiny::observeEvent(input$another_presentation, {
       shiny::updateTextInput(session, "schol_pres_conf", value = "")
       shiny::updateSelectInput(session, "schol_pres_type", selected = "")
       output$submit_message <- shiny::renderUI({ NULL })
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Done with presentations
     shiny::observeEvent(input$done_presentations, {
       if (!is.null(state$base_data$schol_pub) && state$base_data$schol_pub == "1") {
@@ -292,7 +292,7 @@ scholarship_entry_server <- function(id, record_id, redcap_url, redcap_token, da
       } else {
         ask_another_entry(session)
       }
-    })
+    }, ignoreInit = TRUE)
     
     # Step 3 - Publication submission
     shiny::observeEvent(input$submit_publication, {
@@ -317,18 +317,18 @@ scholarship_entry_server <- function(id, record_id, redcap_url, redcap_token, da
           shiny::div(class = "alert alert-success", "Publication added!")
         })
       }
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Add another publication
     shiny::observeEvent(input$another_publication, {
       shiny::updateTextAreaInput(session, "schol_cit", value = "")
       output$submit_message <- shiny::renderUI({ NULL })
-    })
-    
+    }, ignoreInit = TRUE)
+
     # Done with publications
     shiny::observeEvent(input$done_publications, {
       ask_another_entry(session)
-    })
+    }, ignoreInit = TRUE)
     
        # Start new entry - USE NS() for button IDs
     shiny::observeEvent(input$modal_new_entry_yes, {
