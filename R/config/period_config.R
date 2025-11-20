@@ -75,8 +75,8 @@ if (!is.null(resident_data$graduation_year) &&
   }
   
   # Default to Period 7 (safest for new/unknown residents)
-# message("Using default Period 7 for resident ", 
-          resident_data$record_id %||% "unknown")
+# message("Using default Period 7 for resident ",
+#           resident_data$record_id %||% "unknown")
   
   config <- get_period_structure(7)
   
