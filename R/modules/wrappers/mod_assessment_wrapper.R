@@ -94,43 +94,13 @@ mod_assessment_wrapper_ui <- function(id) {
   gmed::mod_questions_viz_ui(ns("questions"), title = "Conference Attendance by Rotation"),
 
   # Plus/Delta feedback table - NOW COLLAPSIBLE (closed by default)
-  div(
-    class = "card mt-4",
-    div(
-      class = "card-header",
-      tags$a(
-        href = paste0("#", ns("plus_delta_collapse")),
-        `data-toggle` = "collapse",
-        class = "d-flex justify-content-between align-items-center text-decoration-none",
-        h4(
-          class = "mb-0",
-          icon("chevron-right", class = "toggle-icon"),
-          " Plus / Delta Feedback"
-        )
-      )
-    ),
-    div(
-      id = ns("plus_delta_collapse"),
-      class = "collapse",
-      div(
-        class = "card-body",
-        gmed::mod_plus_delta_table_ui(ns("plus_delta"), title = NULL)
-      )
+  bslib::accordion(
+    id = ns("plus_delta_accordion"),
+    open = FALSE,  # Start collapsed
+    bslib::accordion_panel(
+      "Plus / Delta Feedback",
+      gmed::mod_plus_delta_table_ui(ns("plus_delta"), title = NULL)
     )
-  ),
-
-  # Add custom CSS for toggle icon rotation
-  tags$head(
-    tags$style(HTML("
-      .toggle-icon {
-        transition: transform 0.3s ease;
-        display: inline-block;
-      }
-      .collapse.show + .card-body .toggle-icon,
-      [aria-expanded='true'] .toggle-icon {
-        transform: rotate(90deg);
-      }
-    "))
   )
   )  # Close tagList
 }    # Close function
