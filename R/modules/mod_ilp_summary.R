@@ -74,10 +74,38 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict, s
       }
     })
 
-    # Get all form data for this period
-    s_eval_data <- reactive({
-      req(rdm_data(), record_id(), period_num())
+    # Fresh data fetch from REDCap for this record (to get recently submitted data)
+    fresh_data <- reactive({
+      req(record_id())
 
+      # Fetch fresh data for this specific record
+      tryCatch({
+        result <- REDCapR::redcap_read(
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token,
+          records = record_id(),
+          raw_or_label = "raw"
+        )
+        if (result$success) result$data else NULL
+      }, error = function(e) NULL)
+    })
+
+    # Get all form data for this period - prefer fresh data, fallback to rdm_data
+    s_eval_data <- reactive({
+      req(record_id(), period_num())
+
+      # Try fresh data first
+      fresh <- fresh_data()
+      if (!is.null(fresh) && nrow(fresh) > 0) {
+        s_eval_rows <- fresh %>%
+          dplyr::filter(
+            redcap_repeat_instrument == "s_eval",
+            redcap_repeat_instance == period_num()
+          )
+        if (nrow(s_eval_rows) > 0) return(dplyr::slice(s_eval_rows, 1))
+      }
+
+      # Fallback to original rdm_data
       if (is.null(rdm_data()$all_forms$s_eval)) return(NULL)
 
       rdm_data()$all_forms$s_eval %>%
@@ -90,8 +118,20 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict, s
     })
 
     ilp_data <- reactive({
-      req(rdm_data(), record_id(), period_num())
+      req(record_id(), period_num())
 
+      # Try fresh data first
+      fresh <- fresh_data()
+      if (!is.null(fresh) && nrow(fresh) > 0) {
+        ilp_rows <- fresh %>%
+          dplyr::filter(
+            redcap_repeat_instrument == "ilp",
+            redcap_repeat_instance == period_num()
+          )
+        if (nrow(ilp_rows) > 0) return(dplyr::slice(ilp_rows, 1))
+      }
+
+      # Fallback to original rdm_data
       if (is.null(rdm_data()$all_forms$ilp)) return(NULL)
 
       rdm_data()$all_forms$ilp %>%
@@ -104,8 +144,20 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict, s
     })
 
     milestone_data <- reactive({
-      req(rdm_data(), record_id(), period_num())
+      req(record_id(), period_num())
 
+      # Try fresh data first
+      fresh <- fresh_data()
+      if (!is.null(fresh) && nrow(fresh) > 0) {
+        ms_rows <- fresh %>%
+          dplyr::filter(
+            redcap_repeat_instrument == "milestone_selfevaluation_c33c",
+            redcap_repeat_instance == period_num()
+          )
+        if (nrow(ms_rows) > 0) return(dplyr::slice(ms_rows, 1))
+      }
+
+      # Fallback to original rdm_data
       if (is.null(rdm_data()$all_forms$milestone_selfevaluation_c33c)) return(NULL)
 
       rdm_data()$all_forms$milestone_selfevaluation_c33c %>%
