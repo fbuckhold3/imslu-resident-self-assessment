@@ -161,7 +161,7 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
             record_id == !!record_id(),
             redcap_repeat_instrument == "s_eval",
             !is.na(s_e_period),
-            s_e_period == !!current_period_name
+            s_e_period == !!as.character(current_period_num) | s_e_period == !!current_period_name
           )
 
 # message("DEBUG: Found ", nrow(current_data), " rows for current period")
@@ -259,7 +259,7 @@ mod_program_feedback_server <- function(id, rdm_data, record_id, period = NULL, 
         s_e_prog_delta = input$s_e_prog_delta %||% "",
         s_e_progconf = input$s_e_progconf %||% "",
         s_e_progfeed = input$s_e_progfeed %||% "",
-        s_e_period = period_name,
+        s_e_period = as.character(period_number),
         s_e_date = format(Sys.Date(), "%Y-%m-%d"),
         stringsAsFactors = FALSE
       )
