@@ -696,6 +696,7 @@ observeEvent(
         )
       }
     )
+  })
   },
   once = TRUE,
   ignoreInit = TRUE
