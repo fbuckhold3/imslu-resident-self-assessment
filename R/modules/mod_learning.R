@@ -285,14 +285,16 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         gmed::visualize_ite_scores(data, dict())
       }, error = function(e) {
         # Show whatever data exists as a simple table
-        display_cols <- intersect(
-          c("test_year", "test_type", "test_score", "test_percentile", "test_level"),
-          names(data)
-        )
-        if (length(display_cols) > 0) {
+        # Exclude metadata columns, show ITE-related columns
+        exclude_cols <- c("record_id", "redcap_repeat_instrument", "redcap_repeat_instance")
+        display_data <- data[, !names(data) %in% exclude_cols, drop = FALSE]
+        # Remove columns that are all NA
+        display_data <- display_data[, colSums(!is.na(display_data)) > 0, drop = FALSE]
+
+        if (ncol(display_data) > 0) {
           DT::datatable(
-            data[, display_cols, drop = FALSE],
-            options = list(dom = 't', pageLength = 10),
+            display_data,
+            options = list(dom = 't', pageLength = 10, scrollX = TRUE),
             rownames = FALSE
           )
         } else {
