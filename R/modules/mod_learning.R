@@ -290,11 +290,13 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         # Category abbreviation mappings
         cat_map <- c(
           "cards" = "Cardiology", "pulm" = "Pulmonary", "gi" = "Gastroenterology",
-          "neph" = "Nephrology", "heme" = "Hematology", "onc" = "Oncology",
+          "neph" = "Nephrology", "nephro" = "Nephrology", "heme" = "Hematology",
+          "onc" = "Oncology", "hemonc" = "Hem/Onc",
           "id" = "Infectious Disease", "endo" = "Endocrinology", "rheum" = "Rheumatology",
           "neuro" = "Neurology", "allergy" = "Allergy/Immunology", "gim" = "General IM",
-          "hvc" = "High Value Care", "geriatrics" = "Geriatrics", "palliative" = "Palliative",
-          "score" = "Total Score", "pct" = "Percentile", "percentile" = "Percentile"
+          "hvc" = "High Value Care", "geri" = "Geriatrics", "geriatrics" = "Geriatrics",
+          "palliative" = "Palliative", "total" = "Total",
+          "score" = "Score", "pct" = "Percent", "percentile" = "Percent"
         )
 
         # Find which PGY years have data
