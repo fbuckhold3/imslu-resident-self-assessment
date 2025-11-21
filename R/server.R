@@ -604,19 +604,27 @@ observe({
 
 observe({
   req(values$authenticated, values$app_data, values$current_resident, active_period())
-  
+
+  # Only initialize modules ONCE - prevent duplicate event handlers
+  if (!is.null(values$modules_initialized) && values$modules_initialized == TRUE) {
+    return()
+  }
+
   period_info <- active_period()
   config <- get_period_structure(period_info$period_number)
   modules <- config$modules
-  
+
   # Storage for module outputs
   if (is.null(values$module_outputs)) {
     values$module_outputs <- reactiveValues()
   }
-  
+
+  # Mark as initialized BEFORE calling module servers
+  values$modules_initialized <- TRUE
+
   # Initialize server for each module
   lapply(modules, function(module_key) {
-    
+
     switch(module_key,
       "scholarship" = {
         values$module_outputs[[module_key]] <- mod_scholarship_wrapper_server(
