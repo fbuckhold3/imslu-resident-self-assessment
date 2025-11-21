@@ -602,39 +602,39 @@ observe({
 # INITIALIZE MODULE SERVERS
 # ============================================================================
 
-observe({
-  req(values$authenticated, values$app_data, values$current_resident, active_period())
+# Use observeEvent with once=TRUE to ensure modules are initialized exactly once
+observeEvent(
+  {
+    values$authenticated
+    values$app_data
+    values$current_resident
+    active_period()
+  },
+  {
+    req(values$authenticated, values$app_data, values$current_resident, active_period())
 
-  # Only initialize modules ONCE - prevent duplicate event handlers
-  if (!is.null(values$modules_initialized) && values$modules_initialized == TRUE) {
-    return()
-  }
+    period_info <- active_period()
+    config <- get_period_structure(period_info$period_number)
+    modules <- config$modules
 
-  period_info <- active_period()
-  config <- get_period_structure(period_info$period_number)
-  modules <- config$modules
+    # Storage for module outputs
+    if (is.null(values$module_outputs)) {
+      values$module_outputs <- reactiveValues()
+    }
 
-  # Storage for module outputs
-  if (is.null(values$module_outputs)) {
-    values$module_outputs <- reactiveValues()
-  }
+    # Initialize server for each module
+    lapply(modules, function(module_key) {
 
-  # Mark as initialized BEFORE calling module servers
-  values$modules_initialized <- TRUE
-
-  # Initialize server for each module
-  lapply(modules, function(module_key) {
-
-    switch(module_key,
-      "scholarship" = {
-        values$module_outputs[[module_key]] <- mod_scholarship_wrapper_server(
-          paste0("wrapper_", module_key),
-          rdm_data = reactive(values$app_data$all_forms$scholarship),
-          record_id = reactive(values$current_resident),
-          period = reactive(period_info$period_number),
-          data_dict = values$app_data$data_dict
-        )
-      },
+      switch(module_key,
+        "scholarship" = {
+          values$module_outputs[[module_key]] <- mod_scholarship_wrapper_server(
+            paste0("wrapper_", module_key),
+            rdm_data = reactive(values$app_data$all_forms$scholarship),
+            record_id = reactive(values$current_resident),
+            period = reactive(period_info$period_number),
+            data_dict = values$app_data$data_dict
+          )
+        },
       "career_planning" = {
         values$module_outputs[[module_key]] <- mod_career_planning_wrapper_server(
           paste0("wrapper_", module_key),
@@ -696,8 +696,10 @@ observe({
         )
       }
     )
-  })
-})
+  },
+  once = TRUE,
+  ignoreInit = TRUE
+)
 # ============================================================================
 # NAVIGATION EVENT HANDLERS
 # ============================================================================
