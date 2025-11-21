@@ -375,8 +375,8 @@ output$prev_acgme_plot <- plotly::renderPlotly({
       result <- tryCatch({
         REDCapR::redcap_write_oneshot(
           ds = data.frame(submission_data, stringsAsFactors = FALSE),
-          redcap_uri = Sys.getenv("REDCAP_URI"),
-          token = Sys.getenv("RDM_TOKEN")
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token
         )
       }, error = function(e) {
         list(success = FALSE, message = e$message)
