@@ -289,13 +289,13 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
 
 # message("=== CHECKING FOR MEDIAN DATA ===")
 # message("ms_data$medians is NULL: ", is.null(ms_data$medians))
-      if (!is.null(ms_data$medians)) {
+#       if (!is.null(ms_data$medians)) {
 # message("ms_data$medians rows: ", nrow(ms_data$medians))
 # message("ms_data$medians columns: ", paste(names(ms_data$medians), collapse = ", "))
-        if (nrow(ms_data$medians) > 0) {
+#         if (nrow(ms_data$medians) > 0) {
 # message("Period names in medians: ", paste(unique(ms_data$medians$period_name), collapse = ", "))
-        }
-      }
+#         }
+#       }
 
       if (!is.null(ms_data$medians) && nrow(ms_data$medians) > 0) {
 # message("Filtering medians for period: ", plot_period_text)
