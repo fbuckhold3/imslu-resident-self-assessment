@@ -372,6 +372,14 @@ output$previous_career_display <- renderUI({
     observeEvent(input$submit, {
       req(period(), record_id())
 
+      # Get period number
+      current_period <- period()
+      period_num <- if (is.list(current_period) && "period_number" %in% names(current_period)) {
+        current_period$period_number
+      } else {
+        as.numeric(current_period)
+      }
+
       # Validate required fields
       if (is.null(input$career_path) || length(input$career_path) == 0) {
         showNotification("Please select at least one career path", type = "error")
