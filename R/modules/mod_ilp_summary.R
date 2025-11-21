@@ -24,9 +24,28 @@ mod_ilp_summary_ui <- function(id) {
 #' @param record_id Reactive containing resident ID
 #' @param period Reactive containing period number/name
 #' @param data_dict Data dictionary
+#' @param session_data Optional reactive containing session-submitted data (overrides rdm_data)
 #' @export
-mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict) {
+mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict, session_data = NULL) {
   moduleServer(id, function(input, output, session) {
+
+    # Topic label mappings
+    topic_labels <- c(
+      "1" = "Abdominal pain", "2" = "Acid base", "3" = "ACS", "4" = "AKI",
+      "5" = "AMS", "6" = "Anticoagulation", "7" = "Cirrhosis", "8" = "CHF",
+      "9" = "Diabetes", "10" = "Dyspnea", "11" = "Electrolytes", "12" = "GI bleed",
+      "13" = "Hypo/hyperNa", "14" = "MSK", "15" = "Onc emergencies", "16" = "Pancreatitis",
+      "17" = "Pneumonia", "18" = "Shock", "19" = "SSTI", "20" = "Substance use",
+      "21" = "Syncope", "22" = "Transfusion", "23" = "Other"
+    )
+
+    # Learning style label mappings
+    learn_labels <- c(
+      "1" = "Case discussion", "2" = "Small group", "3" = "Direct observation",
+      "4" = "Simulation", "5" = "Standardized patients", "6" = "Lectures",
+      "7" = "Mentoring", "8" = "Online modules", "9" = "Specific rotation",
+      "10" = "Reading", "11" = "Self-directed", "12" = "Other"
+    )
 
     # Get period number
     period_num <- reactive({
@@ -261,6 +280,44 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict) {
         )
       }
 
+      # Assessment Review Section (s_e_plus and s_e_delta - resident's reflection on feedback)
+      if ("assessment_review" %in% config$modules) {
+        s_eval <- s_eval_data()
+        sections$assessment_review <- div(
+          class = "card mb-3",
+          div(
+            class = "card-header bg-secondary text-white",
+            h5(class = "mb-0", icon("clipboard-check"), " Assessment Review")
+          ),
+          div(
+            class = "card-body",
+            if (!is.null(s_eval) && nrow(s_eval) > 0) {
+              tagList(
+                if (!is.na(s_eval$s_e_plus[1]) && nzchar(s_eval$s_e_plus[1])) {
+                  div(
+                    tags$strong("Reflections on Plus Feedback:"),
+                    p(s_eval$s_e_plus[1]),
+                    hr()
+                  )
+                },
+                if (!is.na(s_eval$s_e_delta[1]) && nzchar(s_eval$s_e_delta[1])) {
+                  div(
+                    tags$strong("Reflections on Delta Feedback:"),
+                    p(s_eval$s_e_delta[1])
+                  )
+                },
+                if ((is.na(s_eval$s_e_plus[1]) || !nzchar(s_eval$s_e_plus[1])) &&
+                    (is.na(s_eval$s_e_delta[1]) || !nzchar(s_eval$s_e_delta[1]))) {
+                  p(class = "text-muted", "No reflections recorded")
+                }
+              )
+            } else {
+              p(class = "text-muted", "Not completed")
+            }
+          )
+        )
+      }
+
       # Learning Section
       if ("learning" %in% config$modules) {
         s_eval <- s_eval_data()
@@ -281,7 +338,11 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict) {
                     selected <- topic_fields[!is.na(s_eval[1, topic_fields]) & s_eval[1, topic_fields] == "1"]
                     if (length(selected) > 0) {
                       tags$ul(
-                        lapply(selected, function(f) tags$li(sub("s_e_topic_sel___", "Topic ", f)))
+                        lapply(selected, function(f) {
+                          code <- sub("s_e_topic_sel___", "", f)
+                          label <- if (code %in% names(topic_labels)) topic_labels[code] else paste("Topic", code)
+                          tags$li(label)
+                        })
                       )
                     } else {
                       p(class = "text-muted", "None selected")
@@ -296,7 +357,11 @@ mod_ilp_summary_server <- function(id, rdm_data, record_id, period, data_dict) {
                     selected <- learn_fields[!is.na(s_eval[1, learn_fields]) & s_eval[1, learn_fields] == "1"]
                     if (length(selected) > 0) {
                       tags$ul(
-                        lapply(selected, function(f) tags$li(sub("s_e_learn_style___", "Style ", f)))
+                        lapply(selected, function(f) {
+                          code <- sub("s_e_learn_style___", "", f)
+                          label <- if (code %in% names(learn_labels)) learn_labels[code] else paste("Style", code)
+                          tags$li(label)
+                        })
                       )
                     } else {
                       p(class = "text-muted", "None selected")
