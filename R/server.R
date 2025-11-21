@@ -698,8 +698,7 @@ observeEvent(
     )
   })
   },
-  once = TRUE,
-  ignoreInit = TRUE
+  once = TRUE
 )
 # ============================================================================
 # NAVIGATION EVENT HANDLERS
