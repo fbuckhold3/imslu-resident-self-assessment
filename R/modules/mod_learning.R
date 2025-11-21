@@ -280,16 +280,24 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         return(p("No ITE scores available yet."))
       }
 
-      # Wrap in tryCatch to handle missing PGY levels gracefully
+      # Try gmed visualization, fall back to simple table if it fails
       tryCatch({
         gmed::visualize_ite_scores(data, dict())
       }, error = function(e) {
-        div(
-          class = "alert alert-warning",
-          role = "alert",
-          icon("info-circle"),
-          " ITE scores visualization not available. Some PGY level data may be missing."
+        # Show whatever data exists as a simple table
+        display_cols <- intersect(
+          c("test_year", "test_type", "test_score", "test_percentile", "test_level"),
+          names(data)
         )
+        if (length(display_cols) > 0) {
+          DT::datatable(
+            data[, display_cols, drop = FALSE],
+            options = list(dom = 't', pageLength = 10),
+            rownames = FALSE
+          )
+        } else {
+          p("ITE data available but cannot be displayed.")
+        }
       })
     })
     
