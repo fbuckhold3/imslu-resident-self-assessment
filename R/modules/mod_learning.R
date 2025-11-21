@@ -280,20 +280,69 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         return(p("No ITE scores available yet."))
       }
 
-      # Try gmed visualization, fall back to simple table if it fails
+      # Try gmed visualization, fall back to custom table if it fails
       tryCatch({
         gmed::visualize_ite_scores(data, dict())
       }, error = function(e) {
-        # Show whatever data exists as a simple table
-        # Exclude metadata columns, show ITE-related columns
-        exclude_cols <- c("record_id", "redcap_repeat_instrument", "redcap_repeat_instance")
-        display_data <- data[, !names(data) %in% exclude_cols, drop = FALSE]
-        # Remove columns that are all NA
-        display_data <- display_data[, colSums(!is.na(display_data)) > 0, drop = FALSE]
+        # Build table with rows by PGY year from wide column format
+        # Column naming: pgy{1,2,3}_{category}_{metric}
 
-        if (ncol(display_data) > 0) {
+        # Category abbreviation mappings
+        cat_map <- c(
+          "cards" = "Cardiology", "pulm" = "Pulmonary", "gi" = "Gastroenterology",
+          "neph" = "Nephrology", "heme" = "Hematology", "onc" = "Oncology",
+          "id" = "Infectious Disease", "endo" = "Endocrinology", "rheum" = "Rheumatology",
+          "neuro" = "Neurology", "allergy" = "Allergy/Immunology", "gim" = "General IM",
+          "hvc" = "High Value Care", "geriatrics" = "Geriatrics", "palliative" = "Palliative",
+          "score" = "Total Score", "pct" = "Percentile", "percentile" = "Percentile"
+        )
+
+        # Find which PGY years have data
+        pgy_years <- c("pgy1", "pgy2", "pgy3")
+        rows <- list()
+
+        for (pgy in pgy_years) {
+          pgy_cols <- grep(paste0("^", pgy, "_"), names(data), value = TRUE)
+          if (length(pgy_cols) > 0) {
+            # Check if any data exists for this PGY
+            has_data <- any(!is.na(data[1, pgy_cols]))
+            if (has_data) {
+              row_data <- list(Year = toupper(pgy))
+              for (col in pgy_cols) {
+                # Extract category from column name
+                parts <- strsplit(gsub(paste0("^", pgy, "_"), "", col), "_")[[1]]
+                cat_abbrev <- parts[1]
+                metric <- if (length(parts) > 1) parts[length(parts)] else ""
+
+                # Map to display name
+                display_name <- if (cat_abbrev %in% names(cat_map)) cat_map[cat_abbrev] else cat_abbrev
+                if (metric != "" && metric != cat_abbrev) {
+                  metric_name <- if (metric %in% names(cat_map)) cat_map[metric] else metric
+                  display_name <- paste(display_name, metric_name)
+                }
+
+                row_data[[display_name]] <- data[[col]][1]
+              }
+              rows[[length(rows) + 1]] <- row_data
+            }
+          }
+        }
+
+        if (length(rows) > 0) {
+          # Combine into data frame
+          all_cols <- unique(unlist(lapply(rows, names)))
+          df <- data.frame(matrix(NA, nrow = length(rows), ncol = length(all_cols)))
+          names(df) <- all_cols
+          for (i in seq_along(rows)) {
+            for (nm in names(rows[[i]])) {
+              df[i, nm] <- rows[[i]][[nm]]
+            }
+          }
+          # Reorder to put Year first
+          df <- df[, c("Year", setdiff(names(df), "Year"))]
+
           DT::datatable(
-            display_data,
+            df,
             options = list(dom = 't', pageLength = 10, scrollX = TRUE),
             rownames = FALSE
           )
