@@ -98,23 +98,29 @@ mod_milestone_entry_server <- function(id, record_id, period, rdm_data) {
     # Get previous period text
     previous_period <- shiny::reactive({
       req(period())
-      
+
       # Get period number from period name
       period_num <- get_period_number_from_name(period())
-      
-      if (is.na(period_num) || period_num <= 1) return(NA)
-      
+
+      if (is.na(period_num)) return(NA)
+
       # Get previous period text
       period_mapping <- data.frame(
         num = 1:7,
-        text = c("Mid Intern", "End Intern", "Mid PGY2", "End PGY2", 
+        text = c("Mid Intern", "End Intern", "Mid PGY2", "End PGY2",
                  "Mid PGY3", "Graduating", "Entering Residency"),
         stringsAsFactors = FALSE
       )
-      
-      prev_num <- period_num - 1
+
+      # Special case: period 1 (Mid Intern) looks back to period 7 (Entering Residency)
+      if (period_num == 1) {
+        prev_num <- 7
+      } else {
+        prev_num <- period_num - 1
+      }
+
       prev_text <- period_mapping$text[period_mapping$num == prev_num]
-      
+
       if (length(prev_text) == 0) return(NA)
       prev_text
     })

@@ -64,18 +64,15 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
       req(rdm_data())
       app_data <- rdm_data()
 
-# message("=== GOAL MODULE: Getting Milestone Data ===")
-
       # PRIORITY 1: Check if milestone_output from this session exists
       if (!is.null(milestone_output) && is.function(milestone_output)) {
         session_milestone <- tryCatch(milestone_output(), error = function(e) NULL)
 
         if (!is.null(session_milestone) && !is.null(session_milestone$scores)) {
-# message("Using milestone data from THIS SESSION'S self-assessment")
-
           # Convert scores to data format expected by spider plot
           # scores() returns a named list like: list(PC1 = 5, PC2 = 3, ...)
-          scores_data <- session_milestone$scores()
+          # Force reactive dependency on scores
+          scores_data <- tryCatch(session_milestone$scores(), error = function(e) NULL)
 
           if (!is.null(scores_data) && length(scores_data) > 0) {
             # Build a single-row data frame with current resident's scores
