@@ -186,7 +186,38 @@ mod_goals_wrapper_server <- function(id, rdm_data, record_id, period, data_dict,
         }
       }
 
-# message("No milestone data found")
+      # PRIORITY 3: Fetch fresh milestone data from REDCap (for recently submitted data)
+      current_period <- if (is.function(period)) period() else period
+      tryCatch({
+        fresh_result <- REDCapR::redcap_read(
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token,
+          records = record_id(),
+          forms = "milestone_selfevaluation_c33c",
+          raw_or_label = "raw"
+        )
+        if (fresh_result$success && nrow(fresh_result$data) > 0) {
+          fresh_ms <- fresh_result$data %>%
+            dplyr::filter(
+              redcap_repeat_instrument == "milestone_selfevaluation_c33c",
+              redcap_repeat_instance == current_period
+            )
+          if (nrow(fresh_ms) > 0) {
+            milestone_cols <- grep("^rep_(pc|mk|sbp|pbl|prof|ics)\\d+_self$",
+                                  names(fresh_ms), value = TRUE)
+            # Check if any milestone data exists
+            has_data <- any(!is.na(fresh_ms[1, milestone_cols]))
+            if (has_data && length(milestone_cols) > 0) {
+              return(list(
+                data = fresh_ms[1, , drop = FALSE],
+                milestone_cols = milestone_cols,
+                medians = NULL
+              ))
+            }
+          }
+        }
+      }, error = function(e) NULL)
+
       return(list(data = data.frame(), milestone_cols = character(0), medians = NULL))
     })
     
