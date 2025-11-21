@@ -275,31 +275,51 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
     # ITE Scores Visualization
     output$ite_visualization <- renderUI({
       data <- test_data()
-      
+
       if (is.null(data) || nrow(data) == 0) {
         return(p("No ITE scores available yet."))
       }
-      
-      gmed::visualize_ite_scores(data, dict())
+
+      # Wrap in tryCatch to handle missing PGY levels gracefully
+      tryCatch({
+        gmed::visualize_ite_scores(data, dict())
+      }, error = function(e) {
+        div(
+          class = "alert alert-warning",
+          role = "alert",
+          icon("info-circle"),
+          " ITE scores visualization not available. Some PGY level data may be missing."
+        )
+      })
     })
     
-    # Risk Assessment Visualization  
+    # Risk Assessment Visualization
     output$risk_visualization <- renderUI({
       data <- test_data()
-      
+
       if (is.null(data) || nrow(data) == 0) {
         return(p("No ITE scores available for risk assessment."))
       }
-      
-      risk <- gmed::assess_ite_risk(data)
-      
-      div(
-        class = paste("alert", risk$risk_class),
-        role = "alert",
-        tags$strong("Risk Level: ", risk$risk_level),
-        tags$br(),
-        tags$small(risk$details)
-      )
+
+      # Wrap in tryCatch to handle missing data gracefully
+      tryCatch({
+        risk <- gmed::assess_ite_risk(data)
+
+        div(
+          class = paste("alert", risk$risk_class),
+          role = "alert",
+          tags$strong("Risk Level: ", risk$risk_level),
+          tags$br(),
+          tags$small(risk$details)
+        )
+      }, error = function(e) {
+        div(
+          class = "alert alert-info",
+          role = "alert",
+          icon("info-circle"),
+          " Risk assessment not available yet."
+        )
+      })
     })
     
     # Step 3 Visualization
