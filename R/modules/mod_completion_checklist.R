@@ -27,6 +27,70 @@ mod_completion_checklist_ui <- function(id, show_details = TRUE) {
 mod_completion_checklist_server <- function(id, rdm_data, record_id, period, show_details = TRUE) {
   moduleServer(id, function(input, output, session) {
 
+    # Fresh data fetch from REDCap for this record (to get recently submitted data)
+    fresh_rdm_data <- reactive({
+      req(record_id())
+
+      # Fetch fresh data for this specific record
+      tryCatch({
+        result <- REDCapR::redcap_read(
+          redcap_uri = app_config$redcap_url,
+          token = app_config$rdm_token,
+          records = record_id(),
+          raw_or_label = "raw"
+        )
+        if (result$success && nrow(result$data) > 0) {
+          # Organize into forms structure like rdm_data
+          fresh_data <- result$data
+
+          # Create all_forms structure
+          all_forms <- list()
+
+          # s_eval form
+          s_eval_rows <- fresh_data %>% dplyr::filter(redcap_repeat_instrument == "s_eval")
+          if (nrow(s_eval_rows) > 0) all_forms$s_eval <- s_eval_rows
+
+          # ilp form
+          ilp_rows <- fresh_data %>% dplyr::filter(redcap_repeat_instrument == "ilp")
+          if (nrow(ilp_rows) > 0) all_forms$ilp <- ilp_rows
+
+          # milestone form
+          ms_rows <- fresh_data %>% dplyr::filter(redcap_repeat_instrument == "milestone_selfevaluation_c33c")
+          if (nrow(ms_rows) > 0) all_forms$milestone_selfevaluation_c33c <- ms_rows
+
+          # scholarship form
+          schol_rows <- fresh_data %>% dplyr::filter(redcap_repeat_instrument == "scholarship")
+          if (nrow(schol_rows) > 0) all_forms$scholarship <- schol_rows
+
+          return(list(all_forms = all_forms))
+        }
+        return(NULL)
+      }, error = function(e) NULL)
+    })
+
+    # Merged data - prefer fresh, fallback to rdm_data
+    merged_data <- reactive({
+      req(rdm_data())
+
+      fresh <- fresh_rdm_data()
+      if (!is.null(fresh) && !is.null(fresh$all_forms)) {
+        # Merge fresh data into rdm_data structure
+        merged <- rdm_data()
+
+        # Replace forms with fresh versions if available
+        for (form_name in names(fresh$all_forms)) {
+          if (!is.null(fresh$all_forms[[form_name]])) {
+            merged$all_forms[[form_name]] <- fresh$all_forms[[form_name]]
+          }
+        }
+
+        return(merged)
+      }
+
+      # Fallback to original
+      rdm_data()
+    })
+
     # Extract period number from various formats - as a reactive
     period_num <- reactive({
       req(period())
@@ -54,11 +118,11 @@ mod_completion_checklist_server <- function(id, rdm_data, record_id, period, sho
       }
     })
 
-    # Get completion status
+    # Get completion status (use merged data with fresh fetch)
     completion_status <- reactive({
-      req(rdm_data(), record_id(), period_num())
+      req(merged_data(), record_id(), period_num())
 
-      get_period_completion_status(rdm_data(), record_id(), period_num())
+      get_period_completion_status(merged_data(), record_id(), period_num())
     })
 
     # Render checklist
