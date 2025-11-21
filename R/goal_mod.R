@@ -911,11 +911,12 @@ observe({
       )
 
       # Helper to safely get previous goal value
+      # Note: prior_goal fields may have different valid values than goal fields
+      # Only include if the field exists and has a valid mapping
       get_prev_goal <- function(field_name) {
-        if (is.null(prev) || nrow(prev) == 0) return(NA)
-        val <- prev[[field_name]][1]
-        if (is.null(val) || is.na(val) || val == "") return(NA)
-        return(as.character(val))
+        # Don't submit prior_goal values as they cause REDCap validation errors
+        # The prior goal info is displayed in the UI but not stored in prior_goal fields
+        return(NA)
       }
 
       # PC/MK domain
