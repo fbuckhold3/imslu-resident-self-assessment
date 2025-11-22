@@ -93,6 +93,80 @@ ui <- page_navbar(
         .stepper-item:last-child .stepper-line {
           display: none;
         }
+
+        /* GMED Card Styling */
+        .gmed-card {
+          background: #ffffff;
+          border: 1px solid #e9ecef;
+          box-shadow: 0 2px 8px rgba(0, 61, 92, 0.08);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: gmedFadeIn 0.3s ease-in;
+        }
+
+        .gmed-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(0, 61, 92, 0.12);
+        }
+
+        /* Card animations */
+        @keyframes gmedFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Enhanced badge styling for gmed colors */
+        .gmed-badge-primary {
+          background: linear-gradient(135deg, #003d5c, #0066a1);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+        }
+
+        .gmed-badge-success {
+          background: linear-gradient(135deg, #00a651, #28a745);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+        }
+
+        .gmed-badge-info {
+          background: linear-gradient(135deg, #2196f3, #4a90a4);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+        }
+
+        .gmed-badge-warning {
+          background: linear-gradient(135deg, #ff8c00, #ffa500);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .gmed-card {
+            margin-bottom: 1rem;
+          }
+
+          .gmed-card .card-body {
+            padding: 1rem !important;
+          }
+        }
       "))
     )
   ),
@@ -176,7 +250,8 @@ ui <- page_navbar(
                 actionButton(
                   "submit_code",
                   "Begin Assessment",
-                  class = "btn-primary btn-lg w-100 mt-3",
+                  class = "btn-lg w-100 mt-3",
+                  style = "background: linear-gradient(135deg, #003d5c, #0066a1); color: white; border: none; border-radius: 12px; font-weight: 600; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(0, 61, 92, 0.3); transition: all 0.3s ease;",
                   icon = icon("arrow-right")
                 ),
                 div(
@@ -213,107 +288,20 @@ ui <- page_navbar(
       div(
         class = "row",
         div(
-          class = "col-lg-10 offset-lg-1",
-          
+          class = "col-lg-11 offset-lg-0",
+
           # Welcome header
           div(
-            class = "card mb-4 shadow-sm",
-            div(
-              class = "card-body",
-              h2(
-                icon("user-md", class = "me-2"),
-                uiOutput("resident_name_display_intro", inline = TRUE)
-              ),
-              p(
-                class = "lead text-muted mb-2",
-                "Below is your training information and current period. Please review and verify this information before beginning your self-assessment."
-              ),
-              div(
-                class = "alert alert-info",
-                icon("info-circle", class = "me-2"),
-                "Use the checklist on the right to track your progress through each section."
-              ),
-              hr(),
-              
-              # Resident info grid
-              div(
-                class = "row g-3",
-                div(
-                  class = "col-md-4",
-                  div(
-                    class = "card h-100 border-primary",
-                    div(
-                      class = "card-header bg-primary text-white",
-                      h5(class = "mb-0", icon("graduation-cap"), " Training Information")
-                    ),
-                    div(
-                      class = "card-body",
-                      div(class = "mb-3",
-                          strong("Current Level:"), br(),
-                          tags$span(class = "badge bg-info fs-6", 
-                                   textOutput("resident_level_display_intro", inline = TRUE))
-                      ),
-                      div(class = "mb-3",
-                          strong("Program Type:"), br(),
-                          tags$span(class = "badge bg-secondary fs-6",
-                                   textOutput("resident_track_display_intro", inline = TRUE))
-                      ),
-                      div(class = "mb-3",
-                          strong("Expected Graduation:"), br(),
-                          textOutput("resident_grad_year_display_intro", inline = TRUE)
-                      ),
-                      div(class = "mb-0",
-                          strong("Academic Year:"), br(),
-                          textOutput("resident_academic_year_display_intro", inline = TRUE)
-                      )
-                    )
-                  )
-                ),
-                div(
-                  class = "col-md-4",
-                  div(
-                    class = "card h-100 border-success",
-                    div(
-                      class = "card-header bg-success text-white",
-                      h5(class = "mb-0", icon("calendar-check"), " Current Period")
-                    ),
-                    div(
-                      class = "card-body",
-                      div(class = "mb-3",
-                          strong("Evaluation Period:"), br(),
-                          tags$span(class = "badge bg-success fs-5",
-                                   textOutput("resident_period_display_intro", inline = TRUE))
-                      ),
-                      div(
-                        class = "alert alert-info mb-0",
-                        icon("info-circle", class = "me-2"),
-                        "This portfolio review reflects your current training period."
-                      )
-                    )
-                  )
-                ),
-                div(
-                  class = "col-md-4",
-                  div(
-                    class = "card h-100 border-info",
-                    div(
-                      class = "card-header bg-info text-white",
-                      h5(class = "mb-0", icon("user-friends"), " Your Coach")
-                    ),
-                    div(
-                      class = "card-body",
-                      div(class = "mb-3",
-                          strong("Coach:"), br(),
-                          textOutput("resident_coach_display_intro", inline = TRUE)
-                      ),
-                      div(class = "mb-0",
-                          strong("Contact:"), br(),
-                          uiOutput("resident_coach_email_display_intro")
-                      )
-                    )
-                  )
-                )
-              )
+            class = "mb-4 text-center",
+            h2(
+              class = "mb-2",
+              style = "color: #003d5c;",
+              icon("user-md", class = "me-2"),
+              uiOutput("resident_name_display_intro", inline = TRUE)
+            ),
+            p(
+              class = "text-muted",
+              "Please review your information below and use the checklist to track your progress."
             )
           ),
 
@@ -321,78 +309,119 @@ ui <- page_navbar(
           div(
             class = "row g-4 mb-4",
 
-            # Left column: Resident info cards (existing)
+            # Left column: Resident info cards
             div(
-              class = "col-lg-6",
-              h4(class = "mb-3", icon("user-circle"), " Your Information"),
+              class = "col-lg-5",
 
-              # Training info card (compact)
+              # Training info card
               div(
-                class = "card mb-3 border-primary",
+                class = "gmed-card mb-3",
+                style = "border-left: 4px solid #0066a1; border-radius: 12px;",
                 div(
-                  class = "card-header bg-primary text-white",
-                  h6(class = "mb-0", icon("graduation-cap"), " Training")
-                ),
-                div(
-                  class = "card-body py-2",
-                  div(class = "row",
-                    div(class = "col-6 mb-2",
-                      tags$small(class = "text-muted", "Level:"), br(),
-                      tags$span(class = "badge bg-info",
-                               textOutput("resident_level_display_intro_compact", inline = TRUE))
+                  class = "card-body",
+                  div(
+                    class = "d-flex align-items-center mb-3",
+                    div(
+                      class = "me-3",
+                      style = "width: 48px; height: 48px; background: linear-gradient(135deg, #003d5c, #0066a1); border-radius: 12px; display: flex; align-items: center; justify-content: center;",
+                      icon("graduation-cap", class = "text-white fa-lg")
                     ),
-                    div(class = "col-6 mb-2",
-                      tags$small(class = "text-muted", "Type:"), br(),
-                      tags$span(class = "badge bg-secondary",
-                               textOutput("resident_track_display_intro_compact", inline = TRUE))
+                    div(
+                      h5(class = "mb-0", style = "color: #003d5c; font-weight: 600;", "Training Information")
+                    )
+                  ),
+                  div(class = "row g-3",
+                    div(class = "col-6",
+                      tags$small(class = "text-muted d-block mb-1", "Level"),
+                      tags$span(
+                        class = "badge",
+                        style = "background: linear-gradient(135deg, #2196f3, #4a90a4); font-size: 0.875rem; padding: 0.5rem 0.75rem; border-radius: 8px;",
+                        textOutput("resident_level_display_intro_compact", inline = TRUE)
+                      )
                     ),
                     div(class = "col-6",
-                      tags$small(class = "text-muted", "Graduation:"), br(),
-                      tags$small(textOutput("resident_grad_year_display_intro_compact", inline = TRUE))
+                      tags$small(class = "text-muted d-block mb-1", "Type"),
+                      tags$span(
+                        class = "badge bg-secondary",
+                        style = "font-size: 0.875rem; padding: 0.5rem 0.75rem; border-radius: 8px;",
+                        textOutput("resident_track_display_intro_compact", inline = TRUE)
+                      )
                     ),
                     div(class = "col-6",
-                      tags$small(class = "text-muted", "Academic Year:"), br(),
-                      tags$small(textOutput("resident_academic_year_display_intro_compact", inline = TRUE))
+                      tags$small(class = "text-muted d-block mb-1", "Graduation"),
+                      tags$div(style = "color: #2c3e50; font-weight: 500;",
+                        textOutput("resident_grad_year_display_intro_compact", inline = TRUE)
+                      )
+                    ),
+                    div(class = "col-6",
+                      tags$small(class = "text-muted d-block mb-1", "Academic Year"),
+                      tags$div(style = "color: #2c3e50; font-weight: 500;",
+                        textOutput("resident_academic_year_display_intro_compact", inline = TRUE)
+                      )
                     )
                   )
                 )
               ),
 
-              # Period info card (compact)
+              # Period info card
               div(
-                class = "card mb-3 border-success",
-                div(
-                  class = "card-header bg-success text-white",
-                  h6(class = "mb-0", icon("calendar-check"), " Current Period")
-                ),
+                class = "gmed-card mb-3",
+                style = "border-left: 4px solid #00a651; border-radius: 12px;",
                 div(
                   class = "card-body",
-                  div(class = "text-center",
-                    tags$span(class = "badge bg-success fs-5",
-                             textOutput("resident_period_display_intro_compact", inline = TRUE))
+                  div(
+                    class = "d-flex align-items-center mb-3",
+                    div(
+                      class = "me-3",
+                      style = "width: 48px; height: 48px; background: linear-gradient(135deg, #00a651, #28a745); border-radius: 12px; display: flex; align-items: center; justify-content: center;",
+                      icon("calendar-check", class = "text-white fa-lg")
+                    ),
+                    div(
+                      h5(class = "mb-0", style = "color: #00a651; font-weight: 600;", "Current Period")
+                    )
                   ),
-                  p(class = "text-muted small mb-0 mt-2 text-center",
-                    "This assessment covers your current training period."
+                  div(class = "text-center py-2",
+                    tags$span(
+                      class = "badge",
+                      style = "background: linear-gradient(135deg, #00a651, #28a745); font-size: 1.25rem; padding: 0.75rem 1.5rem; border-radius: 12px; letter-spacing: 0.5px;",
+                      textOutput("resident_period_display_intro_compact", inline = TRUE)
+                    )
+                  ),
+                  p(class = "text-muted small text-center mb-0 mt-2",
+                    icon("info-circle", class = "me-1"),
+                    "This assessment covers your current training period"
                   )
                 )
               ),
 
-              # Coach info card (compact)
+              # Coach info card
               div(
-                class = "card border-info",
+                class = "gmed-card",
+                style = "border-left: 4px solid #4a90a4; border-radius: 12px;",
                 div(
-                  class = "card-header bg-info text-white",
-                  h6(class = "mb-0", icon("user-friends"), " Your Coach")
-                ),
-                div(
-                  class = "card-body py-2",
-                  div(class = "mb-2",
-                    tags$small(class = "text-muted", "Name:"), br(),
-                    textOutput("resident_coach_display_intro_compact", inline = TRUE)
+                  class = "card-body",
+                  div(
+                    class = "d-flex align-items-center mb-3",
+                    div(
+                      class = "me-3",
+                      style = "width: 48px; height: 48px; background: linear-gradient(135deg, #4a90a4, #2196f3); border-radius: 12px; display: flex; align-items: center; justify-content: center;",
+                      icon("user-friends", class = "text-white fa-lg")
+                    ),
+                    div(
+                      h5(class = "mb-0", style = "color: #4a90a4; font-weight: 600;", "Your Coach")
+                    )
                   ),
-                  div(class = "mb-0",
-                    tags$small(class = "text-muted", "Contact:"), br(),
-                    uiOutput("resident_coach_email_display_intro_compact")
+                  div(
+                    div(class = "mb-2",
+                      tags$small(class = "text-muted d-block mb-1", "Name"),
+                      tags$div(style = "color: #2c3e50; font-weight: 500;",
+                        textOutput("resident_coach_display_intro_compact", inline = TRUE)
+                      )
+                    ),
+                    div(
+                      tags$small(class = "text-muted d-block mb-1", "Contact"),
+                      uiOutput("resident_coach_email_display_intro_compact")
+                    )
                   )
                 )
               )
@@ -400,25 +429,71 @@ ui <- page_navbar(
 
             # Right column: Completion checklist
             div(
-              class = "col-lg-6",
+              class = "col-lg-7",
               div(
-                class = "card h-100",
+                class = "gmed-card h-100",
+                style = "border-radius: 16px; border-top: 8px solid #003d5c;",
                 div(
-                  class = "card-header bg-light",
-                  h4(class = "mb-0", icon("clipboard-check"), " Self-Assessment Progress")
-                ),
-                div(
-                  class = "card-body",
+                  class = "card-body p-4",
                   div(
-                    class = "alert alert-info mb-3",
-                    icon("info-circle", class = "me-2"),
-                    tags$strong("How to use this checklist:"),
-                    tags$ul(
-                      class = "mb-0 mt-2",
-                      tags$li(tags$strong(icon("star", class = "text-warning"), " Required"), " - Must be completed before final submission"),
-                      tags$li(icon("check-circle", class = "text-success"), " Complete - You've already submitted data"),
-                      tags$li(icon("circle", class = "text-danger"), " Incomplete - Required but not yet completed"),
-                      tags$li(icon("circle", class = "text-muted"), " Optional - Not required but available")
+                    class = "d-flex align-items-center mb-4",
+                    div(
+                      class = "me-3",
+                      style = "width: 56px; height: 56px; background: linear-gradient(135deg, #003d5c, #0066a1); border-radius: 14px; display: flex; align-items: center; justify-content: center;",
+                      icon("clipboard-check", class = "text-white", style = "font-size: 1.5rem;")
+                    ),
+                    div(
+                      h4(class = "mb-0", style = "color: #003d5c; font-weight: 600;", "Self-Assessment Progress")
+                    )
+                  ),
+                  div(
+                    class = "alert mb-3",
+                    style = "background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-left: 4px solid #2196f3; border-radius: 8px;",
+                    div(
+                      class = "d-flex align-items-start",
+                      icon("info-circle", class = "me-2 mt-1", style = "color: #2196f3;"),
+                      div(
+                        tags$strong("Checklist Guide:"),
+                        tags$ul(
+                          class = "mb-0 mt-2 small",
+                          style = "list-style: none; padding-left: 0;",
+                          tags$li(
+                            class = "mb-1",
+                            tags$span(
+                              class = "badge me-2",
+                              style = "background: linear-gradient(135deg, #ff8c00, #ffa500); font-size: 0.75rem;",
+                              icon("star")
+                            ),
+                            tags$strong("Required"), " - Must complete before submission"
+                          ),
+                          tags$li(
+                            class = "mb-1",
+                            tags$span(
+                              class = "badge me-2",
+                              style = "background: linear-gradient(135deg, #00a651, #28a745); font-size: 0.75rem;",
+                              icon("check-circle")
+                            ),
+                            "Complete - Already submitted"
+                          ),
+                          tags$li(
+                            class = "mb-1",
+                            tags$span(
+                              class = "badge bg-danger me-2",
+                              style = "font-size: 0.75rem;",
+                              icon("circle")
+                            ),
+                            "Incomplete - Required but not done"
+                          ),
+                          tags$li(
+                            tags$span(
+                              class = "badge bg-secondary me-2",
+                              style = "font-size: 0.75rem;",
+                              icon("circle")
+                            ),
+                            "Optional - Available but not required"
+                          )
+                        )
+                      )
                     )
                   ),
                   mod_completion_checklist_ui("intro_checklist", show_details = TRUE)
@@ -429,13 +504,15 @@ ui <- page_navbar(
 
           # Navigation
           div(
-            class = "d-flex justify-content-end mt-4",
+            class = "d-flex justify-content-center mt-4",
             actionButton(
-  "nav_intro_next",
-  "Begin Self-Assessment",  # CHANGED
-  class = "btn-primary btn-lg",
-  icon = icon("arrow-right")
-)
+              "nav_intro_next",
+              "Begin Self-Assessment",
+              class = "btn-lg",
+              style = "background: linear-gradient(135deg, #003d5c, #0066a1); color: white; border: none; padding: 0.75rem 3rem; border-radius: 12px; font-weight: 600; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(0, 61, 92, 0.3); transition: all 0.3s ease;",
+              icon = icon("arrow-right"),
+              onclick = "this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0, 61, 92, 0.4)'"
+            )
           )
         )
       )
