@@ -126,29 +126,76 @@ ui <- page_navbar(
       div(
         class = "row justify-content-center",
         div(
-          class = "col-md-6",
+          class = "col-lg-8 col-md-10",
           div(
-            class = "card shadow",
+            class = "card shadow-lg",
             div(
-              class = "card-body p-5 text-center",
-              h2("Resident Self-Assessment Access"),  # CHANGED
-              p(class = "text-muted mb-4", "Please enter your access code to begin"),
-              textInput(
-                "access_code_input",
-                NULL,
-                placeholder = "Enter access code",
-                width = "100%"
-              ),
-              actionButton(
-                "submit_code",
-                "Submit",
-                class = "btn-primary btn-lg w-100 mt-3"
-              ),
+              class = "card-body p-5",
+              # Welcome header
               div(
-                id = "access_code_error",
-                class = "alert alert-danger mt-3",
-                style = "display: none;",
-                "Invalid access code. Please try again."
+                class = "text-center mb-4",
+                h2(class = "mb-3", icon("user-md", class = "me-2"), "Welcome to the IMSLU Resident Self-Assessment"),
+                hr()
+              ),
+
+              # Introduction text
+              div(
+                class = "mb-4",
+                p(
+                  class = "lead",
+                  "Upon entering your access code, you will be asked a series of questions to help you reflect on your progress as a resident and to formulate a draft of your ",
+                  tags$strong("Individualized Learning Plan (ILP)"), "."
+                ),
+                p(
+                  class = "text-muted",
+                  icon("clock", class = "me-2"),
+                  "Please allow yourself approximately 30 minutes to complete this assessment."
+                ),
+                p(
+                  class = "text-muted",
+                  icon("save", class = "me-2"),
+                  "Please complete this before meeting with your resident coach so they have time to review your answers."
+                ),
+                p(
+                  class = "text-muted mb-0",
+                  icon("info-circle", class = "me-2"),
+                  "If you do not finish, you can return to this at a later time."
+                )
+              ),
+
+              # Access code input
+              div(
+                class = "mt-4",
+                h5(class = "text-center mb-3", "Enter Your Access Code"),
+                textInput(
+                  "access_code_input",
+                  NULL,
+                  placeholder = "Enter access code",
+                  width = "100%"
+                ),
+                actionButton(
+                  "submit_code",
+                  "Begin Assessment",
+                  class = "btn-primary btn-lg w-100 mt-3",
+                  icon = icon("arrow-right")
+                ),
+                div(
+                  id = "access_code_error",
+                  class = "alert alert-danger mt-3",
+                  style = "display: none;",
+                  "Invalid access code. Please try again."
+                )
+              ),
+
+              # Disclaimer
+              hr(class = "mt-4"),
+              div(
+                class = "text-center mt-3",
+                p(
+                  class = "small text-muted mb-0",
+                  icon("lock", class = "me-1"),
+                  tags$strong("Disclaimer:"), " This information is proprietary to the IMSLU Program at SSM Health - Saint Louis University. Authorized access only."
+                )
               )
             )
           )
@@ -177,7 +224,15 @@ ui <- page_navbar(
                 icon("user-md", class = "me-2"),
                 uiOutput("resident_name_display_intro", inline = TRUE)
               ),
-              p(class = "lead text-muted mb-4", "Welcome to your self-assessment review"),
+              p(
+                class = "lead text-muted mb-2",
+                "Below is your training information and current period. Please review and verify this information before beginning your self-assessment."
+              ),
+              div(
+                class = "alert alert-info",
+                icon("info-circle", class = "me-2"),
+                "Use the checklist on the right to track your progress through each section."
+              ),
               hr(),
               
               # Resident info grid
@@ -261,54 +316,6 @@ ui <- page_navbar(
               )
             )
           ),
-          
-          # Period debug (for testing)
-          conditionalPanel(
-            condition = "input.show_period_debug",
-            div(
-              class = "card mb-4 border-info",
-              div(
-                class = "card-header bg-info text-white",
-                h5(class = "mb-0", icon("cog"), " Period Detection (Debug)")
-              ),
-              div(
-                class = "card-body",
-                verbatimTextOutput("period_debug_info")
-              )
-            ),
-            div(
-              class = "card mb-4 border-warning",
-              div(
-                class = "card-header bg-warning",
-                h5(class = "mb-0", icon("wrench"), " Period Override (Testing)")
-              ),
-              div(
-                class = "card-body",
-                p(class = "text-muted small", "Override automatic period detection for testing different period flows"),
-                selectInput(
-                  "period_override",
-                  "Force Period:",
-                  choices = c(
-                    "Use Auto-Detection" = "auto",
-                    "Period 7: Entering Residency (July-Sept, Intern)" = "7",
-                    "Period 1: Mid Intern (Oct-Jan, PGY1)" = "1",
-                    "Period 2: End Intern (Feb-June, PGY1)" = "2",
-                    "Period 3: Mid PGY2 (Oct-Jan, PGY2)" = "3",
-                    "Period 4: End PGY2 (Feb-June, PGY2)" = "4",
-                    "Period 5: Mid PGY3 (Oct-Jan, PGY3)" = "5",
-                    "Period 6: Graduating (Feb-June, PGY3)" = "6"
-                  ),
-                  selected = "auto"
-                ),
-                div(
-                  class = "alert alert-info small mb-0",
-                  icon("info-circle", class = "me-2"),
-                  "When override is active, the flow will show modules for the selected period."
-                )
-              )
-            )
-          ),
-          checkboxInput("show_period_debug", "Show Period Debug Info", value = TRUE),
 
           # Two-column layout: Resident info + Checklist
           div(
@@ -476,10 +483,24 @@ nav_panel(
               class = "card-body p-5 text-center",
               icon("check-circle", class = "fa-4x text-success mb-4"),
               h2("Self-Assessment Complete!"),
-              p(class = "lead", "Thank you for completing your self-assessment."),
+              p(class = "lead mb-4", "Thank you for completing your self-assessment."),
               hr(),
-              p("Your responses have been saved to REDCap."),
-              p("Review your submitted data below.")
+              div(
+                class = "text-start mt-4",
+                p(
+                  icon("save", class = "me-2 text-success"),
+                  tags$strong("Your responses have been saved successfully.")
+                ),
+                p(
+                  icon("clipboard-check", class = "me-2 text-primary"),
+                  "Review your completion status and Individualized Learning Plan (ILP) below."
+                ),
+                p(
+                  icon("user-friends", class = "me-2 text-info"),
+                  class = "mb-0",
+                  "Your coach will review your submission prior to your meeting."
+                )
+              )
             )
           ),
 
