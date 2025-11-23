@@ -32,6 +32,16 @@ mod_learning_ui <- function(id) {
       ),
       div(
         class = "card-body",
+        div(
+          class = "alert alert-info mb-3",
+          icon("info-circle", class = "me-2"),
+          p(
+            class = "mb-0",
+            "We are determining a 'risk status' for passing boards based on your in-training score. ",
+            "This takes into account a combination of your total percentage and/or a drop in scores over a year. ",
+            "In meeting with your coach, you will be assigned a learning plan."
+          )
+        ),
         uiOutput(ns("risk_visualization"))
       )
     ),
