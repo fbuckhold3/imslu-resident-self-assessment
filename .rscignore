@@ -1,0 +1,40 @@
+# Git and version control
+.git/
+.gitignore
+.github/
+
+# Documentation (not needed for runtime)
+docs/
+*.md
+!DEPLOYMENT.md
+
+# IDE and editor files
+.vscode/
+.idea/
+.Rproj.user/
+*.Rproj
+
+# Environment files (use Connect Cloud vars instead)
+.Renviron
+.Renviron.*
+config.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+.Rhistory
+.RData
+
+# Security
+*.pem
+*.key
+credentials/
+
+# Development only
+tests/
+test/
+examples/
