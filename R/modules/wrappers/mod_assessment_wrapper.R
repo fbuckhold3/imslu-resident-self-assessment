@@ -24,7 +24,16 @@ mod_assessment_wrapper_ui <- function(id) {
   # Assessment progress charts
   gmed::assessment_viz_ui(ns("charts"), title = "Assessment Progress"),
 
-  # Reflection section - MOVED to be right after Assessment Progress
+  # Custom detail viz from gmed (replaces default detail viz)
+  gmed::mod_assessment_detail_custom_ui(ns("custom_detail")),
+
+  # Custom data display for selected evaluation (NEW!)
+  gmed::mod_assessment_data_display_ui(ns("data_display")),
+
+  # CC Completion Status
+  gmed::mod_cc_completion_ui(ns("cc_completion")),
+
+  # Reflection section - MOVED to be below CC Completion table
   div(
     class = "card mt-4",
     div(
@@ -59,7 +68,7 @@ mod_assessment_wrapper_ui <- function(id) {
         textAreaInput(
           ns("s_e_delta"),
           label = NULL,
-          placeholder = "Reflect on areas where you can improve...",
+          placeholder = "Reflect on the positive feedback you can improve...",
           rows = 4,
           width = "100%"
         )
@@ -80,15 +89,6 @@ mod_assessment_wrapper_ui <- function(id) {
       uiOutput(ns("submit_status"))
     )
   ),
-
-  # Custom detail viz from gmed (replaces default detail viz)
-  gmed::mod_assessment_detail_custom_ui(ns("custom_detail")),
-
-  # Custom data display for selected evaluation (NEW!)
-  gmed::mod_assessment_data_display_ui(ns("data_display")),
-
-  # CC Completion Status
-  gmed::mod_cc_completion_ui(ns("cc_completion")),
 
   # Questions/conference attendance
   gmed::mod_questions_viz_ui(ns("questions"), title = "Conference Attendance by Rotation"),
