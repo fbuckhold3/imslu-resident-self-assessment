@@ -32,6 +32,16 @@ mod_learning_ui <- function(id) {
       ),
       div(
         class = "card-body",
+        div(
+          class = "alert alert-info mb-3",
+          icon("info-circle", class = "me-2"),
+          p(
+            class = "mb-0",
+            "We are determining a 'risk status' for passing boards based on your in-training score. ",
+            "This takes into account a combination of your total percentage and/or a drop in scores over a year. ",
+            "In meeting with your coach, you will be assigned a learning plan."
+          )
+        ),
         uiOutput(ns("risk_visualization"))
       )
     ),
@@ -104,9 +114,9 @@ mod_learning_ui <- function(id) {
           role = "alert",
           icon("info-circle"),
           " ",
-          tags$strong("Reminder:"),
-          " REDCap checkbox fields are stored as separate columns with 0/1 values. ",
-          "Select all options that apply."
+          tags$strong("Review and Update:"),
+          " Please review your previous period's topics and learning styles shown above. ",
+          "Update your selections below based on your current development needs."
         ),
         uiOutput(ns("current_entry")),
         br(),
@@ -287,7 +297,7 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
         # Build table with rows by PGY year from wide column format
         # Column naming: pgy{1,2,3}_{category}_{metric}
 
-        # Category abbreviation mappings
+        # Category abbreviation mappings - removed "ile" from percent
         cat_map <- c(
           "cards" = "Cardiology", "pulm" = "Pulmonary", "gi" = "Gastroenterology",
           "neph" = "Nephrology", "nephro" = "Nephrology", "heme" = "Hematology",
@@ -296,56 +306,71 @@ mod_learning_server <- function(id, rdm_data, record_id, period, data_dict) {
           "neuro" = "Neurology", "allergy" = "Allergy/Immunology", "gim" = "General IM",
           "hvc" = "High Value Care", "geri" = "Geriatrics", "geriatrics" = "Geriatrics",
           "palliative" = "Palliative", "total" = "Total",
-          "score" = "Score", "pct" = "Percent", "percentile" = "Percent"
+          "score" = "Score", "pct" = "Percent", "percent" = "Percent"
         )
 
-        # Find which PGY years have data
+        # Build table with topics as rows and years as columns
         pgy_years <- c("pgy1", "pgy2", "pgy3")
-        rows <- list()
 
+        # Collect all unique topics/metrics across all years
+        all_topics <- list()
         for (pgy in pgy_years) {
           pgy_cols <- grep(paste0("^", pgy, "_"), names(data), value = TRUE)
-          if (length(pgy_cols) > 0) {
-            # Check if any data exists for this PGY
-            has_data <- any(!is.na(data[1, pgy_cols]))
-            if (has_data) {
-              row_data <- list(Year = toupper(pgy))
-              for (col in pgy_cols) {
-                # Extract category from column name
-                parts <- strsplit(gsub(paste0("^", pgy, "_"), "", col), "_")[[1]]
-                cat_abbrev <- parts[1]
-                metric <- if (length(parts) > 1) parts[length(parts)] else ""
+          for (col in pgy_cols) {
+            # Extract category from column name
+            parts <- strsplit(gsub(paste0("^", pgy, "_"), "", col), "_")[[1]]
+            cat_abbrev <- parts[1]
+            metric <- if (length(parts) > 1) parts[length(parts)] else ""
 
-                # Map to display name
-                display_name <- if (cat_abbrev %in% names(cat_map)) cat_map[cat_abbrev] else cat_abbrev
-                if (metric != "" && metric != cat_abbrev) {
-                  metric_name <- if (metric %in% names(cat_map)) cat_map[metric] else metric
-                  display_name <- paste(display_name, metric_name)
-                }
-
-                row_data[[display_name]] <- data[[col]][1]
-              }
-              rows[[length(rows) + 1]] <- row_data
+            # Map to display name - remove "ile" from percentile
+            display_name <- if (cat_abbrev %in% names(cat_map)) cat_map[cat_abbrev] else cat_abbrev
+            if (metric != "" && metric != cat_abbrev) {
+              metric_clean <- gsub("ile$", "", metric)  # Remove "ile" suffix
+              metric_name <- if (metric_clean %in% names(cat_map)) cat_map[metric_clean] else metric_clean
+              display_name <- paste(display_name, metric_name)
             }
+
+            all_topics[[display_name]] <- TRUE
           }
         }
 
-        if (length(rows) > 0) {
-          # Combine into data frame
-          all_cols <- unique(unlist(lapply(rows, names)))
-          df <- data.frame(matrix(NA, nrow = length(rows), ncol = length(all_cols)))
-          names(df) <- all_cols
-          for (i in seq_along(rows)) {
-            for (nm in names(rows[[i]])) {
-              df[i, nm] <- rows[[i]][[nm]]
+        topic_names <- names(all_topics)
+
+        if (length(topic_names) > 0) {
+          # Create data frame with topics as rows
+          df <- data.frame(Topic = topic_names, stringsAsFactors = FALSE)
+
+          # Add columns for each PGY year
+          for (pgy in pgy_years) {
+            pgy_label <- toupper(pgy)
+            df[[pgy_label]] <- NA
+
+            pgy_cols <- grep(paste0("^", pgy, "_"), names(data), value = TRUE)
+            for (col in pgy_cols) {
+              # Extract category from column name
+              parts <- strsplit(gsub(paste0("^", pgy, "_"), "", col), "_")[[1]]
+              cat_abbrev <- parts[1]
+              metric <- if (length(parts) > 1) parts[length(parts)] else ""
+
+              # Map to display name - remove "ile" from percentile
+              display_name <- if (cat_abbrev %in% names(cat_map)) cat_map[cat_abbrev] else cat_abbrev
+              if (metric != "" && metric != cat_abbrev) {
+                metric_clean <- gsub("ile$", "", metric)  # Remove "ile" suffix
+                metric_name <- if (metric_clean %in% names(cat_map)) cat_map[metric_clean] else metric_clean
+                display_name <- paste(display_name, metric_name)
+              }
+
+              # Find the row for this topic
+              row_idx <- which(df$Topic == display_name)
+              if (length(row_idx) > 0) {
+                df[row_idx, pgy_label] <- data[[col]][1]
+              }
             }
           }
-          # Reorder to put Year first
-          df <- df[, c("Year", setdiff(names(df), "Year"))]
 
           DT::datatable(
             df,
-            options = list(dom = 't', pageLength = 10, scrollX = TRUE),
+            options = list(dom = 't', pageLength = 25, scrollX = TRUE),
             rownames = FALSE
           )
         } else {

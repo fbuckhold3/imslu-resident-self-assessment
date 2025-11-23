@@ -68,13 +68,6 @@ mod_scholarship_wrapper_server <- function(id, rdm_data, record_id, period = NUL
         schol_data <- data.frame()
       }
 
-      # DEBUG: Show data counts by type
-      type_counts <- if (nrow(schol_data) > 0 && "schol_type" %in% names(schol_data)) {
-        table(schol_data$schol_type)
-      } else {
-        "No data"
-      }
-
       # Use gmed's display functions
       scholarship_summary <- gmed::display_scholarship(
         schol_data,
@@ -82,10 +75,6 @@ mod_scholarship_wrapper_server <- function(id, rdm_data, record_id, period = NUL
       )
 
       tagList(
-        # Temporary debug info
-        div(class = "alert alert-info small",
-          paste("Total records:", nrow(schol_data), "| Types:", paste(capture.output(print(type_counts)), collapse = " "))
-        ),
         gmed::scholarship_badge_ui(scholarship_summary$badges),
         hr(),
         gmed::scholarship_tables_ui(scholarship_summary)
