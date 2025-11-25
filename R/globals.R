@@ -19,6 +19,20 @@ library(ggplot2)
 library(gmed)
 
 # ============================================================================
+# RESOURCE PATHS FOR PACKAGE ASSETS
+# ============================================================================
+
+# Add resource path for gmed package's www directory
+# This allows Shiny to serve the milestone images from the installed gmed package
+gmed_www_path <- system.file("www", package = "gmed")
+if (dir.exists(gmed_www_path)) {
+  shiny::addResourcePath("gmed-assets", gmed_www_path)
+  message("Added resource path for gmed package assets: ", gmed_www_path)
+} else {
+  warning("gmed package www directory not found at: ", gmed_www_path)
+}
+
+# ============================================================================
 # SSL CONFIGURATION FOR REDCAP
 # ============================================================================
 
