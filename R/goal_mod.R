@@ -152,7 +152,81 @@ goalSettingServer <- function(id, rdm_dict_data, subcompetency_maps,
         previous_goals(prev_ilp)
       }
     })
-    
+
+    # Load CURRENT period ILP data to populate form fields
+    observe({
+      req(ilp_data, resident_info, selected_period)
+
+      ilp <- if (is.function(ilp_data)) ilp_data() else ilp_data
+
+      if (is.null(ilp) || nrow(ilp) == 0) {
+        return()
+      }
+
+      # Get current period number
+      current_period <- if (is.function(selected_period)) selected_period() else selected_period
+      period_num <- extract_period_number(current_period)
+
+      # Get resident info
+      res_info <- if (is.function(resident_info)) resident_info() else resident_info
+      rec_id <- res_info$record_id
+
+      # Filter ILP data for current resident and current period
+      current_ilp <- ilp %>%
+        dplyr::filter(
+          record_id == !!rec_id,
+          redcap_repeat_instrument == "ilp",
+          redcap_repeat_instance == !!period_num
+        )
+
+      if (nrow(current_ilp) > 0) {
+        # Take first row if multiple exist
+        current_data <- current_ilp[1, ]
+
+        # Update PC/MK domain inputs
+        if (!is.na(current_data$goal_pcmk) && current_data$goal_pcmk != "") {
+          updateSelectInput(session, "subcomp_pcmk", selected = current_data$goal_pcmk)
+        }
+        if (!is.na(current_data$goal_level_pcmk) && current_data$goal_level_pcmk != "") {
+          updateSelectInput(session, "target_level_pcmk", selected = current_data$goal_level_pcmk)
+        }
+        if (!is.na(current_data$goal_level_r_pcmk) && current_data$goal_level_r_pcmk != "") {
+          updateSelectInput(session, "milestone_row_pcmk", selected = current_data$goal_level_r_pcmk)
+        }
+        if (!is.na(current_data$how_pcmk) && current_data$how_pcmk != "") {
+          updateTextAreaInput(session, "how_pcmk", value = current_data$how_pcmk)
+        }
+
+        # Update SBP/PBLI domain inputs
+        if (!is.na(current_data$goal_sbppbl) && current_data$goal_sbppbl != "") {
+          updateSelectInput(session, "subcomp_sbppbl", selected = current_data$goal_sbppbl)
+        }
+        if (!is.na(current_data$goal_level_sbppbl) && current_data$goal_level_sbppbl != "") {
+          updateSelectInput(session, "target_level_sbppbl", selected = current_data$goal_level_sbppbl)
+        }
+        if (!is.na(current_data$goal_r_sbppbl) && current_data$goal_r_sbppbl != "") {
+          updateSelectInput(session, "milestone_row_sbppbl", selected = current_data$goal_r_sbppbl)
+        }
+        if (!is.na(current_data$how_sbppbl) && current_data$how_sbppbl != "") {
+          updateTextAreaInput(session, "how_sbppbl", value = current_data$how_sbppbl)
+        }
+
+        # Update PROF/ICS domain inputs
+        if (!is.na(current_data$goal_subcomp_profics) && current_data$goal_subcomp_profics != "") {
+          updateSelectInput(session, "subcomp_profics", selected = current_data$goal_subcomp_profics)
+        }
+        if (!is.na(current_data$goal_level_profics) && current_data$goal_level_profics != "") {
+          updateSelectInput(session, "target_level_profics", selected = current_data$goal_level_profics)
+        }
+        if (!is.na(current_data$goal_r_profics) && current_data$goal_r_profics != "") {
+          updateSelectInput(session, "milestone_row_profics", selected = current_data$goal_r_profics)
+        }
+        if (!is.na(current_data$how_profics) && current_data$how_profics != "") {
+          updateTextAreaInput(session, "how_profics", value = current_data$how_profics)
+        }
+      }
+    })
+
     # Render spider plot using gmed function
     output$spider_plot <- plotly::renderPlotly({
       ms_data <- milestone_data()
