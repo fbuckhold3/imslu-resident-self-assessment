@@ -33,7 +33,20 @@ mod_assessment_wrapper_ui <- function(id) {
   # CC Completion Status
   gmed::mod_cc_completion_ui(ns("cc_completion")),
 
-  # Reflection section - MOVED to be below CC Completion table
+  # Questions/conference attendance
+  gmed::mod_questions_viz_ui(ns("questions"), title = "Conference Attendance by Rotation"),
+
+  # Plus/Delta feedback table - NOW COLLAPSIBLE (closed by default)
+  bslib::accordion(
+    id = ns("plus_delta_accordion"),
+    open = FALSE,  # Start collapsed
+    bslib::accordion_panel(
+      "Plus / Delta Feedback",
+      gmed::mod_plus_delta_table_ui(ns("plus_delta"), title = NULL)
+    )
+  ),
+
+  # Reflection section - MOVED to bottom
   div(
     class = "card mt-4",
     div(
@@ -87,19 +100,6 @@ mod_assessment_wrapper_ui <- function(id) {
 
       # Status message
       uiOutput(ns("submit_status"))
-    )
-  ),
-
-  # Questions/conference attendance
-  gmed::mod_questions_viz_ui(ns("questions"), title = "Conference Attendance by Rotation"),
-
-  # Plus/Delta feedback table - NOW COLLAPSIBLE (closed by default)
-  bslib::accordion(
-    id = ns("plus_delta_accordion"),
-    open = FALSE,  # Start collapsed
-    bslib::accordion_panel(
-      "Plus / Delta Feedback",
-      gmed::mod_plus_delta_table_ui(ns("plus_delta"), title = NULL)
     )
   )
   )  # Close tagList
